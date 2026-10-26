@@ -15,6 +15,7 @@ import {
   compressDeckPayload, decompressDeckPayload, decompressOutlinePayload, encodeOutlineLink,
 } from './src/links.js';
 import { THEMES } from './src/themes/index.js';
+import { restoreLocalFonts, saveLocalFont, removeLocalFont, checkFontFile } from './src/local-fonts.js';
 import sampleRequests from './reference/sample-requests.txt?raw';
 
 // ---------- State ----------
@@ -116,14 +117,15 @@ async function loadTheme(config) {
   state.size = state.layouts.scripture.slide.size;
   setFontMap(config.fonts);
   clearMetricsCache();
-  // Wait for the slide fonts before anything is measured. A font that loads
-  // nothing (Neue Haas Grotesk isn't installed on this computer) falls back.
-  const loaded = await Promise.all(Object.values(config.fonts).map(f => document.fonts.load(`${f.weight} 100px "${f.family}"`).catch(() => [])));
+  // Wait for the slide fonts before anything is measured. A font with no copy
+  // that loads (Neue Haas Grotesk not on this computer) falls back to a stand-in.
+  await Promise.all(Object.values(config.fonts).map(f => document.fonts.load(`${f.weight} 100px "${f.family}"`).catch(() => [])));
   await document.fonts.ready;
-  const missing = [...new Set(Object.values(config.fonts).filter((f, i) => !loaded[i].length).map(f => f.family))];
+  const hasFont = f => [...document.fonts].some(face => face.family.replace(/["']/g, '') === f.family && String(face.weight) === String(f.weight) && face.status === 'loaded');
+  const missing = [...new Set(Object.values(config.fonts).filter(f => !hasFont(f)).map(f => f.family))];
   $('font-note').hidden = !missing.length;
   $('font-note').textContent = missing.length
-    ? `${missing.join(', ')} isn’t installed on this computer, so the preview uses a stand-in font and line breaks may differ. The ProPresenter bundle still uses the theme’s fonts.`
+    ? `${missing.join(', ')} isn’t on this computer, so the preview uses a stand-in font and line breaks may differ. Load the font file in Settings. The ProPresenter bundle still uses the theme’s fonts.`
     : '';
   $('theme-select').value = config.id;
   // Black-text themes need a light preview behind them, and the reverse
@@ -182,6 +184,40 @@ function relayoutAll() {
     if ((s.kind === 'point' || s.kind === 'quote') && !s.edited) return layoutTextSlide(s, c);
     return measureSlide(s, c);
   });
+}
+
+// ---------- Neue Haas Grotesk font file (Settings) ----------
+// The commercial font is loaded once per browser, like Sunday Slides' NIV 84.
+const LOCAL_FONT = { family: 'Neue Haas Grotesk Display Pro', weight: 400, names: ['NHaasGroteskDSPro-55Rg', 'Neue Haas Grotesk Display'] };
+
+function renderFontFile(stored) {
+  $('font-file-status').textContent = stored
+    ? `Loaded on this computer: ${stored.name}.`
+    : 'Not loaded in this browser. Load the font file here once (NHaasGroteskDSPro-55Rg).';
+  $('btn-remove-font').hidden = !stored;
+  $('btn-load-font').textContent = stored ? 'Replace font file' : 'Load font file';
+}
+
+async function loadFontFile(file) {
+  const data = await file.arrayBuffer();
+  const problem = checkFontFile(data, LOCAL_FONT.names);
+  if (problem) {
+    showToast(problem, 'warn', 6000);
+    return;
+  }
+  try {
+    await saveLocalFont({ family: LOCAL_FONT.family, weight: LOCAL_FONT.weight, name: file.name, data });
+  } catch (err) {
+    console.error(err);
+    showToast('That font file couldn’t be loaded.', 'warn');
+    return;
+  }
+  renderFontFile({ name: file.name });
+  // Measure everything again with the real font
+  await loadTheme(state.theme);
+  relayoutAll();
+  renderAll();
+  showToast('Neue Haas Grotesk is loaded on this computer.');
 }
 
 // ---------- Porch Live locations ----------
@@ -1178,6 +1214,18 @@ function bindEvents() {
     if (state.view === 'grid') renderGrid();
     else drawEditorCanvas();
   });
+  $('btn-load-font').addEventListener('click', () => $('font-input').click());
+  $('font-input').addEventListener('change', async e => {
+    const file = e.target.files[0];
+    e.target.value = '';
+    if (file) await loadFontFile(file);
+  });
+  $('btn-remove-font').addEventListener('click', async () => {
+    if (!confirm('Remove the Neue Haas Grotesk font from this browser?')) return;
+    await removeLocalFont(LOCAL_FONT.family, LOCAL_FONT.weight);
+    renderFontFile(null);
+    showToast('Font removed from this browser. Reload the page to see the stand-in.');
+  });
   $('context-verses').addEventListener('change', e => {
     state.context = +e.target.value;
     storageSet('context', state.context);
@@ -1209,6 +1257,9 @@ async function init() {
   renderLocationsStatus();
   $('theme-select').innerHTML = THEMES.map(t => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('');
   setBg(storageGet('bg', 'video'));
+  // The licensed font, if this browser has it, before anything is measured
+  const fonts = await restoreLocalFonts();
+  renderFontFile(fonts.find(f => f.family === LOCAL_FONT.family) || null);
   await loadTheme(THEMES[0]);
   bindEvents();
   renderAll();
