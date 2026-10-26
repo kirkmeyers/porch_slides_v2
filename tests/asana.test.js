@@ -33,3 +33,21 @@ test('the locations go in the notes of the third intro blank', () => {
   assert.equal(all[2].notes, 'Porch Live Locations: Fort Worth, Midland');
   assert.equal(withBlanks([])[2].notes, 'Porch Live Locations - Confidence ONLY');
 });
+
+test('the locations are also text on that slide, one per line', async () => {
+  const { readFileSync } = await import('node:fs');
+  const { parseTheme, resolveLayouts } = await import('../src/theme.js');
+  const { THEME_CONFIGS } = await import('../src/themes/configs.js');
+  const { buildPresentation, readPresentationText } = await import('../src/propresenter.js');
+  const config = THEME_CONFIGS[0];
+  const layouts = resolveLayouts(config, parseTheme(new Uint8Array(readFileSync(new URL(`../src/themes/${config.file}/Theme.bin`, import.meta.url)))));
+  const all = withBlanks([], { locations: ['Fort Worth', 'Midland'] });
+  assert.equal(all[2].layout, 'point');
+  assert.equal(all[2].text, 'Fort Worth\nMidland');
+  const texts = readPresentationText(buildPresentation('t', all, layouts, { w: 3840, h: 2160 }));
+  assert.ok(texts[2].some(t => t.includes('Fort Worth\\\nMidland')), 'locations on the slide');
+  assert.ok(texts[2].some(t => t.includes('Porch Live Locations: Fort Worth, Midland')), 'and in the notes');
+  // The other intro blanks stay empty, and without locations so does this one
+  assert.deepEqual(texts[0], []);
+  assert.equal(withBlanks([])[2].layout, null);
+});

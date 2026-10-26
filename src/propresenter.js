@@ -204,7 +204,8 @@ export function slideLabel(slide) {
   switch (slide.kind) {
     case 'scripture': return oneLine(slide.reference);
     case 'quote': return slide.reference ? `Quote: ${slide.reference}` : 'Quote';
-    case 'blank': return slide.label || '';
+    case 'blank':
+    case 'locations': return slide.label || '';
     default: return text.length > 30 ? text.slice(0, 30) + '…' : text;
   }
 }
@@ -238,7 +239,8 @@ function groupName(slide) {
 }
 
 // Five blanks open every Porch presentation; the third carries the week's
-// Porch Live locations in its notes, for the confidence monitor. One more closes it.
+// Porch Live locations, as text on the theme's point slide (one per line) and
+// in its notes, for the confidence monitor. One more closes it.
 const LOCATIONS_LABEL = 'Porch Live Locations - Confidence ONLY';
 const INTRO_BLANKS = ['', '', LOCATIONS_LABEL, '', ''];
 
@@ -249,11 +251,20 @@ export function locationsNotes(locations) {
 
 /** The slides as exported: intro blanks, the deck, and a closing blank. */
 export function withBlanks(slides, { locations = [] } = {}) {
-  const blank = (label, key) => ({
-    id: generateUUID(), kind: 'blank', layout: null, group: key, text: '', reference: '', label,
-    notes: label === LOCATIONS_LABEL ? locationsNotes(locations) : label,
-    cues: [],
-  });
+  const blank = (label, key) => {
+    const showLocations = label === LOCATIONS_LABEL && locations.length > 0;
+    return {
+      id: generateUUID(),
+      kind: showLocations ? 'locations' : 'blank',
+      layout: showLocations ? 'point' : null,
+      group: key,
+      text: showLocations ? locations.join('\n') : '',
+      reference: '',
+      label,
+      notes: label === LOCATIONS_LABEL ? locationsNotes(locations) : label,
+      cues: [],
+    };
+  };
   return [...INTRO_BLANKS.map(l => blank(l, 'blank_intro')), ...slides, blank('', 'blank_outro')];
 }
 
