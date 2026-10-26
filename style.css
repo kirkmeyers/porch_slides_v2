@@ -6,8 +6,9 @@
 @font-face { font-family: 'Oswald'; font-weight: 500; font-style: normal; font-display: block; src: url('./src/fonts/oswald-latin-500-normal.woff2') format('woff2'); }
 @font-face { font-family: 'Oswald'; font-weight: 600; font-style: normal; font-display: block; src: url('./src/fonts/oswald-latin-600-normal.woff2') format('woff2'); }
 
-/* Slide fonts used by the Porch themes */
-@font-face { font-family: 'Neue Haas Grotesk Display Pro'; font-weight: 400; font-style: normal; font-display: block; src: url('./src/fonts/NeueHaasGroteskDisplayPro-55Roman.otf') format('opentype'); }
+/* Slide fonts used by the Porch themes. Neue Haas Grotesk is commercial: it comes
+   from the computer's install (Adobe Fonts), with an uncommitted local copy as a fallback. */
+@font-face { font-family: 'Neue Haas Grotesk Display Pro'; font-weight: 400; font-style: normal; font-display: block; src: local('Neue Haas Grotesk Display Pro'), local('NeueHaasGroteskDisplayPro-55Roman'), url('./src/fonts/local/NeueHaasGroteskDisplayPro-55Roman.otf') format('opentype'); }
 @font-face { font-family: 'IBM Plex Mono'; font-weight: 300; font-style: normal; font-display: block; src: url('./src/fonts/IBMPlexMono-Light.ttf') format('truetype'); }
 @font-face { font-family: 'IBM Plex Mono'; font-weight: 400; font-style: normal; font-display: block; src: url('./src/fonts/IBMPlexMono-Regular.ttf') format('truetype'); }
 @font-face { font-family: 'IBM Plex Mono'; font-weight: 500; font-style: normal; font-display: block; src: url('./src/fonts/IBMPlexMono-Medium.ttf') format('truetype'); }

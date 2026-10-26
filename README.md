@@ -110,14 +110,14 @@ src/protobuf.js                 small schema-less protobuf reader/writer
 src/links.js                    #outline= and #review= links
 src/locations.js                reading the Porch Live locations line
 src/themes/                     theme files and layouts
-src/fonts/                      slide fonts and UI fonts (Lato, Oswald)
+src/fonts/                      IBM Plex Mono and the UI fonts (Lato, Oswald); local/ is for Neue Haas, uncommitted
 ```
 
 ## Notes
 
 - Slide text is plain text with a little markup: `\n` for a line break, `{…}` for dimmed words, `^12^` for a verse number.
 - Context verses are dimmed with true text opacity in the bundle (a fourth, alpha value in the RTF's expanded color table), the same way the Lover's template stores its own see-through sample text.
-- Fonts: IBM Plex Mono is under the SIL Open Font License. Neue Haas Grotesk Display Pro is a commercial font, copied from porch_slides; check its license before this repository is made public.
+- Fonts: IBM Plex Mono, Lato and Oswald are under the SIL Open Font License and are bundled. Neue Haas Grotesk Display Pro is a commercial font and isn't in this repository: the site uses the copy installed on the computer (Adobe Fonts), or a copy you put in `src/fonts/local/` (gitignored) for local development. Without either, the preview uses a stand-in font and says so in the left panel. Line counts and breaks may then differ a little, but the ProPresenter bundle still names the theme's fonts, so ProPresenter shows them correctly.
 - Real manuscripts and ProPresenter libraries stay out of this repository. Only the sample request file is committed.
 
 ## License

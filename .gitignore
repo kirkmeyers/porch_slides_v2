@@ -22,3 +22,6 @@ reference/*/
 
 # Local tooling
 .claude/
+
+# Commercial fonts: installed on the Mac (Adobe Fonts), never committed
+src/fonts/local/

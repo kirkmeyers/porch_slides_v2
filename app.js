@@ -116,9 +116,15 @@ async function loadTheme(config) {
   state.size = state.layouts.scripture.slide.size;
   setFontMap(config.fonts);
   clearMetricsCache();
-  // Wait for the slide fonts before anything is measured
-  await Promise.all(Object.values(config.fonts).map(f => document.fonts.load(`${f.weight} 100px "${f.family}"`)));
+  // Wait for the slide fonts before anything is measured. A font that loads
+  // nothing (Neue Haas Grotesk isn't installed on this computer) falls back.
+  const loaded = await Promise.all(Object.values(config.fonts).map(f => document.fonts.load(`${f.weight} 100px "${f.family}"`).catch(() => [])));
   await document.fonts.ready;
+  const missing = [...new Set(Object.values(config.fonts).filter((f, i) => !loaded[i].length).map(f => f.family))];
+  $('font-note').hidden = !missing.length;
+  $('font-note').textContent = missing.length
+    ? `${missing.join(', ')} isn’t installed on this computer, so the preview uses a stand-in font and line breaks may differ. The ProPresenter bundle still uses the theme’s fonts.`
+    : '';
   $('theme-select').value = config.id;
   // Black-text themes need a light preview behind them, and the reverse
   if (config.dark && (state.bg === 'video' || state.bg === 'black')) setBg('light');
