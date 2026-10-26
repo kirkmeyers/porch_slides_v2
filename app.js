@@ -236,6 +236,29 @@ async function loadRequestText(text, sourceLabel) {
   showToast(`Loaded ${n} slide${n === 1 ? '' : 's'}${sourceLabel ? ` from ${sourceLabel}` : ''}.`);
 }
 
+/** Open the paste box; it keeps what was pasted last while the page is open. */
+function openPasteModal() {
+  $('paste-modal').hidden = false;
+  const ta = $('paste-text');
+  ta.focus();
+  ta.select();
+}
+
+async function buildFromPasted() {
+  const text = $('paste-text').value;
+  if (!text.trim()) {
+    showToast('Paste the request text first.', 'warn');
+    return;
+  }
+  if (!parseRequestFile(text).entries.length) {
+    showToast('No slide requests found in that text.', 'warn');
+    return;
+  }
+  if (state.slides.some(s => s.edited) && !confirm('Replace the current slides? Your edits will be lost.')) return;
+  $('paste-modal').hidden = true;
+  await loadRequestText(text, 'pasted text');
+}
+
 async function handleFile(file) {
   if (!file) return;
   if (!/\.txt$/i.test(file.name) && file.type && file.type !== 'text/plain') {
@@ -986,6 +1009,16 @@ function bindEvents() {
     handleFile(e.target.files[0]);
     e.target.value = '';
   });
+  $('btn-paste-text').addEventListener('click', openPasteModal);
+  $('btn-build-pasted').addEventListener('click', buildFromPasted);
+  $('paste-text').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault();
+      buildFromPasted();
+    } else if (e.key === 'Escape') {
+      $('paste-modal').hidden = true;
+    }
+  });
   $('btn-load-sample').addEventListener('click', () => {
     if (state.slides.some(s => s.edited) && !confirm('Replace the current slides with the sample?')) return;
     loadRequestText(sampleRequests, 'the sample');
@@ -1020,7 +1053,7 @@ function bindEvents() {
   $('btn-prev').addEventListener('click', () => openEditor(state.active - 1));
   $('btn-next').addEventListener('click', () => openEditor(state.active + 1));
   document.addEventListener('keydown', e => {
-    if (!state.slides.length || !$('help-modal').hidden || !$('proof-modal').hidden) return;
+    if (!state.slides.length || !$('help-modal').hidden || !$('proof-modal').hidden || !$('paste-modal').hidden) return;
     const active = document.activeElement;
     const typing = ['INPUT', 'TEXTAREA', 'SELECT'].includes(active.tagName) || active.isContentEditable;
 

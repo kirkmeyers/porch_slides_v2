@@ -8,7 +8,7 @@ Vite, fully client-side, hosted on GitHub Pages.
 
 ## Features
 
-- **Three ways to load requests:** the Load requests button, dragging the `.txt` onto the page, or a `#outline=` link (same encoding as porch_slides).
+- **Four ways to load requests:** the Load requests button, dragging the `.txt` onto the page, **Paste text** (a box for request text in the same format; ⌘Enter builds), or a `#outline=` link (same encoding as porch_slides).
 - **Scripture the Porch way:** one slide per verse read. Each slide shows a block of verses filled to nine lines, with the verse being read at full strength and the context verses around it dimmed. The block stays put while the highlight moves down it, and a new block starts (keeping up to two verses already read above) when the next verse would run out of context. A block always starts on a whole verse, and the last verse can be cut short to fill the last line. A single-verse request gets up to two verses of context above it (Settings: 2, 1 or none).
 - **Verse numbers** are superscript, written the way ProPresenter writes them, so they stay superscript after import.
 - **Poetry:** Job, Psalms, Proverbs, Song of Solomon and Lamentations are broken at their pauses (semicolons and colons, then conjunctions, then a long line's middle comma) and set flush left. Well-known poems inside prose books (Isaiah 6:3, the Magnificat, Philippians 2:6-11 and others) are set in their lines too.
