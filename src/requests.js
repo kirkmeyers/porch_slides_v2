@@ -7,6 +7,7 @@
  *   # communicator: Jane Smith
  *   # title: Idolatry Week 7
  *   # date: 2026-10-27            optional; used in file names (default: today)
+ *   # locations: Fort Worth, Midland   optional; otherwise they come from Asana
  *   Slide 1: Mark 9:9-13 (ESV)    scripture: one slide per verse
  *   Slide 2: Romans 8:18 (NIV)
  *   > 18 For I consider that…     verse text for the line above (one verse per line)

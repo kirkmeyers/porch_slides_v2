@@ -237,13 +237,23 @@ function groupName(slide) {
   return KIND_LABELS[slide.kind] || 'Slide';
 }
 
-// Five blanks open every Porch presentation; the third carries the note for
-// the Porch Live locations. One more closes it.
-const INTRO_BLANKS = ['', '', 'Porch Live Locations - Confidence ONLY', '', ''];
+// Five blanks open every Porch presentation; the third carries the week's
+// Porch Live locations in its notes, for the confidence monitor. One more closes it.
+const LOCATIONS_LABEL = 'Porch Live Locations - Confidence ONLY';
+const INTRO_BLANKS = ['', '', LOCATIONS_LABEL, '', ''];
+
+/** Notes for the locations slide: "Porch Live Locations: Fort Worth, Midland". */
+export function locationsNotes(locations) {
+  return locations && locations.length ? `Porch Live Locations: ${locations.join(', ')}` : LOCATIONS_LABEL;
+}
 
 /** The slides as exported: intro blanks, the deck, and a closing blank. */
-export function withBlanks(slides) {
-  const blank = (label, key) => ({ id: generateUUID(), kind: 'blank', layout: null, group: key, text: '', reference: '', label, notes: label, cues: [] });
+export function withBlanks(slides, { locations = [] } = {}) {
+  const blank = (label, key) => ({
+    id: generateUUID(), kind: 'blank', layout: null, group: key, text: '', reference: '', label,
+    notes: label === LOCATIONS_LABEL ? locationsNotes(locations) : label,
+    cues: [],
+  });
   return [...INTRO_BLANKS.map(l => blank(l, 'blank_intro')), ...slides, blank('', 'blank_outro')];
 }
 
@@ -302,9 +312,9 @@ export function buildPresentation(name, slides, layouts, size, { dimOpacity = 0.
  * Package a .probundle: the .pro plus the theme images it uses.
  * @param assets  { fileName: url } for the theme's image fills
  */
-export async function exportBundle({ name, slides, layouts, size, assets, dimOpacity }) {
+export async function exportBundle({ name, slides, layouts, size, assets, dimOpacity, locations }) {
   const zip = new JSZip();
-  zip.file(`${name}.pro`, buildPresentation(name, withBlanks(slides), layouts, size, { dimOpacity }));
+  zip.file(`${name}.pro`, buildPresentation(name, withBlanks(slides, { locations }), layouts, size, { dimOpacity }));
   const used = new Set();
   for (const s of slides) {
     const layout = s.layout && layouts[s.layout];
