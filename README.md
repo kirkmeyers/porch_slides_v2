@@ -12,7 +12,7 @@ Vite, fully client-side, hosted on GitHub Pages.
 - **Scripture the Porch way:** one slide per verse read. Each slide shows a block of verses filled to nine lines, with the verse being read at full strength and the context verses around it dimmed. The block stays put while the highlight moves down it, and a new block starts (keeping up to two verses already read above) when the next verse would run out of context. A block always starts on a whole verse, and the last verse can be cut short to fill the last line. A single-verse request gets up to two verses of context above it (Settings: 2, 1 or none).
 - **Verse numbers** are superscript, written the way ProPresenter writes them, so they stay superscript after import.
 - **Poetry:** Job, Psalms, Proverbs, Song of Solomon and Lamentations are broken at their pauses (semicolons and colons, then conjunctions, then a long line's middle comma) and set flush left. Well-known poems inside prose books (Isaiah 6:3, the Magnificat, Philippians 2:6-11 and others) are set in their lines too.
-- **Translations:** a translation named on the request line (`Romans 8:18 (NIV)`) or in `# translation:` is used; Bolls supplies the text. In the editor, the Translation picker (ESV, KJV, NIV, NIV 84, NASB, NASB 1995, NLT, ASV, CSB, the same list as porch_slides) switches the whole passage. Bolls doesn't carry the NIV, so NIV passages take pasted verses (one per line, starting with the verse number) or text typed on the slide.
+- **Translations:** a translation named on the request line (`Romans 8:18 (NIV)`) or in `# translation:` is used; Bolls supplies the text. In the editor, the Translation picker (ESV, KJV, NIV, NIV 84, NASB, NASB 1995, NLT, ASV, CSB, the same list as porch_slides) switches the whole passage. Bolls doesn't carry the NIV, so NIV passages take pasted verses (one per line, starting with the verse number) or text typed on the slide. The NIV 84 can come from a local file instead (see below).
 - **Points and quotes:** points are balanced over their lines. Quotes go in quotation marks with the author below. The Inner Life sets points in sentence case, keeping capitals on names for God.
 - **Warnings where the operator sees them:** verse text that came from the request file or was pasted in, verses that still need text, text too tall for the box, and request lines the tool didn't understand. These are listed in the left panel and badged on each slide. The editor shows each slide's line count against the box's limit.
 - **Grid and editor:** in the grid, click to select, use the arrow keys to move, drag to reorder, press Delete to remove the selected slide (⌘Z undoes it), and double-click or press Enter to open a slide. In the editor, type directly on the slide as in ProPresenter. Enter adds a line break, Option+Enter splits the slide at the cursor, and Dim / undim (⌘D) dims the selected words. The context buttons add or remove a verse above or below. Esc goes back to the grid. You can also merge, delete, and add blank slides.
@@ -78,6 +78,12 @@ Slide 4: Charles Spurgeon – "I have learned to kiss the wave that throws me ag
 
 `#outline=<payload>` carries a request file, zipped (DEFLATE, one file named `d`) and URL-safe base64 encoded without padding, exactly as porch_slides does; the Node example in the [porch_slides README](https://github.com/kirkmeyers/porch_slides#4-load-from-link-outlinepayload) works unchanged when pointed at this site's URL. In the browser console, `await encodeOutlineLink(text)` builds one.
 
+## NIV 84 from a local file
+
+The NIV is under copyright, so its text never ships with the site. Porch Slides uses the same `niv84.json` as Sunday Slides, which makes it from the NIV 1984 PDF with `npm run niv84` (see the Sunday Slides README). On each computer that needs it, open **Settings → Load NIV 84 file** once and choose `niv84.json`. The browser keeps it (IndexedDB), and NIV 84 then works like any other translation: passages fill their nine-line blocks from it and the translation picker can switch to it. Passages already loaded and waiting for NIV 84 text are filled in when the file loads.
+
+Review links carry the finished slide text, so teammates opening one don't need the file. Check NIV 84 slides by eye: the PDF lost its em dashes and small caps, and the converter restores them by rule (LORD takes its case from the ESV verse where it can). A request for plain "NIV" means the 2011 edition, which still has to be pasted in.
+
 ## Using the output in ProPresenter
 
 1. Click **ProPresenter bundle** and copy the `.probundle` to the Pro machine.
@@ -99,7 +105,9 @@ index.html, app.js, style.css   UI
 src/requests.js                 request file parser, sentence case
 src/passage.js                  the nine-line scripture block, poetry
 src/slides.js                   requests -> slides, passages, points, quotes
-src/bible.js                    book names, translations, Bolls API
+src/bible.js                    book names, translations, Bolls API, NIV 84 file
+src/local-bibles.js             translation files kept in the browser (NIV 84)
+src/local-fonts.js              font files kept in the browser (Neue Haas)
 src/layout.js                   text markup, wrapping, balancing
 src/render.js                   canvas drawing for the preview and PNGs
 src/inline-editor.js            typing on the slide

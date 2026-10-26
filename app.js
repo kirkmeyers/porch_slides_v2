@@ -6,7 +6,8 @@ import {
 } from './src/slides.js';
 import { parseTheme, resolveLayouts } from './src/theme.js';
 import { setFontMap, measure, fontMetrics, clearMetricsCache, drawSlide, renderSlidePng } from './src/render.js';
-import { fetchChapter, cleanVerseText, isNivTranslation, translationName, TRANSLATIONS } from './src/bible.js';
+import { fetchChapter, cleanVerseText, canFetchTranslation, translationName, TRANSLATIONS } from './src/bible.js';
+import { restoreLocalBibles, saveLocalBible, removeLocalBible, validateBible, verseCount } from './src/local-bibles.js';
 import { parseRuns, plainText, readingText, setDim, isAllDim, sliceText } from './src/layout.js';
 import { createTextBox, bindEditable, textToHtml, selectionOffsets, setSelectionOffsets } from './src/inline-editor.js';
 import { exportBundle, slideNotes, locationsNotes } from './src/propresenter.js';
@@ -218,6 +219,49 @@ async function loadFontFile(file) {
   relayoutAll();
   renderAll();
   showToast('Neue Haas Grotesk is loaded on this computer.');
+}
+
+// ---------- NIV 84 file (Settings) ----------
+// The same niv84.json Sunday Slides loads, made there by npm run niv84.
+function renderLocalBibles(list) {
+  const niv = list.find(b => b.code === 'NIV');
+  $('niv84-status').textContent = niv
+    ? `Loaded on this computer: ${niv.verses.toLocaleString()} verses.`
+    : 'Not on this computer. Load the niv84.json that Sunday Slides makes (npm run niv84) here once.';
+  $('btn-remove-niv84').hidden = !niv;
+  $('btn-load-niv84').textContent = niv ? 'Replace NIV 84 file' : 'Load NIV 84 file';
+}
+
+/** Lay out again the passages that were waiting for NIV 84 text. */
+async function refreshNivPassages() {
+  for (const passage of Object.values(state.passages)) {
+    if (passage.translation !== 'NIV' || (passage.manuscript && passage.sourceTranslation === 'NIV')) continue;
+    const [start, end] = groupRange(passage.group);
+    if (start < 0 || state.slides.slice(start, end + 1).some(s => s.edited)) continue;
+    passage.checks = passage.checks.filter(c => !/Bolls|aren’t in the/.test(c));
+    await loadPassageText(passage, fetchChapter);
+    rebuildPassage(passage.group);
+  }
+  renderAll();
+}
+
+async function loadNiv84File(file) {
+  let data;
+  try {
+    data = JSON.parse(await file.text());
+  } catch {
+    showToast('That file isn’t readable JSON.', 'warn');
+    return;
+  }
+  const problem = validateBible(data) || (data.translation !== 'NIV' ? 'That isn’t the NIV 84 file.' : '');
+  if (problem) {
+    showToast(problem, 'warn', 6000);
+    return;
+  }
+  await saveLocalBible(data);
+  renderLocalBibles([{ code: 'NIV', verses: verseCount(data) }]);
+  await refreshNivPassages();
+  showToast('NIV 84 is loaded on this computer.');
 }
 
 // ---------- Porch Live locations ----------
@@ -553,7 +597,7 @@ function renderEditor() {
     const source = passage.sourceTranslation;
     const fromFile = !!passage.manuscript;
     $('edit-translation').innerHTML = Object.entries(TRANSLATIONS)
-      .map(([code, name]) => `<option value="${code}">${name}${code === source && fromFile ? ' (request file)' : ''}${isNivTranslation(code) && !(code === source && fromFile) ? ' (paste it in)' : ''}</option>`)
+      .map(([code, name]) => `<option value="${code}">${name}${code === source && fromFile ? ' (request file)' : ''}${!canFetchTranslation(code) && !(code === source && fromFile) ? ' (paste it in)' : ''}</option>`)
       .join('');
     $('edit-translation').value = passage.translation;
   }
@@ -574,7 +618,7 @@ function renderEditor() {
   }
 
   // Paste box for passages without text (NIV) or with the request file's text
-  const showPaste = !!passage && (!passage.verses || slide.needsText || isNivTranslation(passage.translation));
+  const showPaste = !!passage && (!passage.verses || slide.needsText || !canFetchTranslation(passage.translation));
   $('paste-field').hidden = !showPaste;
   if (showPaste) $('paste-label').textContent = `Paste ${passageLabel(passage)} (${translationName(passage.translation)})`;
 
@@ -804,7 +848,7 @@ async function changeTranslation(code) {
   $('translation-field').classList.add('busy');
   await loadPassageText(passage, fetchChapter);
   $('translation-field').classList.remove('busy');
-  if (!passage.verses && !isNivTranslation(code)) {
+  if (!passage.verses && canFetchTranslation(code)) {
     Object.assign(passage, previous);
     $('edit-translation').value = passage.translation;
     showToast(`Couldn’t get the ${translationName(code)} from Bolls. Check the connection and try again.`, 'warn', 6000);
@@ -814,7 +858,7 @@ async function changeTranslation(code) {
   const r = rebuildPassage(slide.group);
   state.active = r.start + Math.min(offset, r.count - 1);
   renderAll();
-  showToast(isNivTranslation(code) ? `Paste the ${translationName(code)} verses for ${passageLabel(passage)} in the editor.` : `${passageLabel(passage)} is now in the ${translationName(code)}.`, isNivTranslation(code) ? 'warn' : '');
+  showToast(!canFetchTranslation(code) ? `Paste the ${translationName(code)} verses for ${passageLabel(passage)} in the editor.` : `${passageLabel(passage)} is now in the ${translationName(code)}.`, !canFetchTranslation(code) ? 'warn' : '');
 }
 
 /** Use pasted verses for the active passage (NIV, or a fix to the request file's text). */
@@ -1214,6 +1258,19 @@ function bindEvents() {
     if (state.view === 'grid') renderGrid();
     else drawEditorCanvas();
   });
+  $('btn-load-niv84').addEventListener('click', () => $('niv84-input').click());
+  $('niv84-input').addEventListener('change', async e => {
+    const file = e.target.files[0];
+    e.target.value = '';
+    if (file) await loadNiv84File(file);
+  });
+  $('btn-remove-niv84').addEventListener('click', async () => {
+    if (!confirm('Remove the NIV 84 text from this browser?')) return;
+    await removeLocalBible('NIV');
+    renderLocalBibles([]);
+    renderAll();
+    showToast('NIV 84 removed from this computer.');
+  });
   $('btn-load-font').addEventListener('click', () => $('font-input').click());
   $('font-input').addEventListener('change', async e => {
     const file = e.target.files[0];
@@ -1259,6 +1316,7 @@ async function init() {
   setBg(storageGet('bg', 'video'));
   // The licensed font, if this browser has it, before anything is measured
   const fonts = await restoreLocalFonts();
+  renderLocalBibles(await restoreLocalBibles());
   renderFontFile(fonts.find(f => f.family === LOCAL_FONT.family) || null);
   await loadTheme(THEMES[0]);
   bindEvents();

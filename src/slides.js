@@ -28,7 +28,7 @@
  * }
  */
 
-import { normalizeTranslation, translationName, isNivTranslation, TRANSLATIONS, cleanVerseText, smartQuotes } from './bible.js';
+import { normalizeTranslation, translationName, canFetchTranslation, TRANSLATIONS, cleanVerseText, smartQuotes } from './bible.js';
 import { parseVerseLines, sentenceCase } from './requests.js';
 import { layoutPassage, passageFormat, blockText } from './passage.js';
 import { countLines, balanceLines, preventOrphan, textArea, applyCase, maxLinesFor } from './layout.js';
@@ -222,16 +222,17 @@ export function translationCode(raw) {
 
 /**
  * Get a passage's verse text: the request file's own verses if it has them,
- * otherwise the chapter from Bolls. Bolls doesn't serve the NIV.
+ * otherwise the chapter from Bolls, or from the NIV 84 file loaded in
+ * Settings. Bolls doesn't serve the NIV.
  */
 export async function loadPassageText(passage, fetchChapter) {
   if (passage.manuscript && passage.translation === passage.sourceTranslation) {
     passage.verses = passage.manuscript;
     return;
   }
-  if (isNivTranslation(passage.translation)) {
+  if (!canFetchTranslation(passage.translation)) {
     passage.verses = null;
-    passage.checks.push(`Bolls doesn’t carry the ${translationName(passage.translation)}. Paste the verses in the editor, or type them on each slide.`);
+    passage.checks.push(`Bolls doesn’t carry the ${translationName(passage.translation)}. Paste the verses in the editor or type them on each slide${passage.translation === 'NIV' ? ', or load the NIV 84 file in Settings' : ''}.`);
     return;
   }
   passage.verses = await fetchChapter(passage.bookId, passage.chapter, passage.translation);
