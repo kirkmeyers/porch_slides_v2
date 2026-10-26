@@ -10,7 +10,7 @@ import { fetchChapter, cleanVerseText, isNivTranslation, translationName, TRANSL
 import { parseRuns, plainText, readingText, setDim, isAllDim, sliceText } from './src/layout.js';
 import { createTextBox, bindEditable, textToHtml, selectionOffsets, setSelectionOffsets } from './src/inline-editor.js';
 import { exportBundle, slideNotes, locationsNotes } from './src/propresenter.js';
-import { fetchLiveLocations, splitLocations } from './src/asana.js';
+import { parseLocations, splitLocations, datedForAnotherDay } from './src/locations.js';
 import {
   compressDeckPayload, decompressDeckPayload, decompressOutlinePayload, encodeOutlineLink,
 } from './src/links.js';
@@ -32,8 +32,8 @@ const state = {
   dimOpacity: 0.25,
   context: 2,
   loading: false,
-  // This week's Porch Live locations: { list, source: 'asana' | 'request' | 'typed', task }
-  locations: { list: [], source: null, task: null },
+  // This week's Porch Live locations: { list, source: 'request' | 'typed', task (Asana link), otherDate }
+  locations: { list: [], source: null, task: null, otherDate: false },
 };
 
 const $ = id => document.getElementById(id);
@@ -179,56 +179,20 @@ function relayoutAll() {
 }
 
 // ---------- Porch Live locations ----------
-function setLocations(list, source, task = null) {
-  state.locations = { list, source, task };
+function setLocations(list, source, task = null, otherDate = false) {
+  state.locations = { list, source, task, otherDate };
   $('live-locations').value = list.join(', ');
   renderLocationsStatus();
   renderWarnings();
 }
 
-function renderLocationsStatus(message) {
-  const { list, source, task } = state.locations;
+function renderLocationsStatus() {
+  const { list, source, task, otherDate } = state.locations;
   const el = $('locations-status');
-  if (message) {
-    el.textContent = message;
-    return;
-  }
-  if (source === 'asana' && task) {
-    el.innerHTML = `${list.length ? 'From' : 'Nothing listed yet in'} <a href="${escapeHtml(task.url)}" target="_blank" rel="noopener">${escapeHtml(task.name.trim())}</a>${state.locations.otherDate ? ' (dated for another week; check it)' : ''}`;
-  } else if (source === 'request') {
-    el.textContent = 'From the request file.';
-  } else if (source === 'typed') {
-    el.textContent = 'Typed in.';
-  } else {
-    el.textContent = storageGet('asanaToken', '') ? '' : 'Add an Asana token in Settings to fill these in automatically.';
-  }
-}
-
-/** Get this week's locations from Asana (needs a token in Settings). */
-async function loadLocationsFromAsana({ quiet = false } = {}) {
-  const token = storageGet('asanaToken', '');
-  if (!token) {
-    if (!quiet) showToast('Add your Asana token in Settings first.', 'warn');
-    renderLocationsStatus();
-    return;
-  }
-  const date = $('service-date').value || todayIso();
-  renderLocationsStatus('Checking Asana…');
-  try {
-    const found = await fetchLiveLocations({ token, date });
-    if (!found) {
-      setLocations([], null);
-      renderLocationsStatus(`No Live Locations task in Asana for ${date}.`);
-      return;
-    }
-    setLocations(found.locations, 'asana', found.task);
-    state.locations.otherDate = found.otherDate;
-    renderLocationsStatus();
-    if (!quiet && found.locations.length) showToast(`Porch Live: ${found.locations.join(', ')}.`);
-  } catch (err) {
-    console.error(err);
-    renderLocationsStatus(err.message || 'Couldn’t reach Asana.');
-  }
+  const link = task && /^https:\/\/app\.asana\.com\//.test(task) ? ` <a href="${escapeHtml(task)}" target="_blank" rel="noopener">Asana task</a>` : '';
+  if (source === 'request') el.innerHTML = `From the request file.${link}${otherDate ? ' Dated for another week; check it.' : ''}`;
+  else if (source === 'typed') el.textContent = 'Typed in.';
+  else el.innerHTML = list.length ? '' : `None in the request file.${link}`;
 }
 
 // ---------- Loading requests ----------
@@ -246,8 +210,8 @@ async function loadRequestText(text, sourceLabel) {
   if (theme && theme !== state.theme) await loadTheme(theme);
   if (h.communicator) $('communicator').value = h.communicator;
   $('service-date').value = /^\d{4}-\d{2}-\d{2}$/.test(h.date || '') ? h.date : todayIso();
-  if (h.locations) setLocations(splitLocations(h.locations), 'request');
-  else loadLocationsFromAsana({ quiet: true });
+  const loc = parseLocations(h.locations);
+  setLocations(loc.locations, loc.locations.length ? 'request' : null, h['locations-task'] || null, datedForAnotherDay(loc, $('service-date').value));
 
   const status = $('load-status');
   status.textContent = 'Getting scripture from Bolls…';
@@ -296,7 +260,7 @@ function renderWarnings() {
   let count = 0;
   if (state.slides.length && !state.locations.list.length) {
     const li = document.createElement('li');
-    li.innerHTML = '<span class="where">Porch Live</span>No locations yet for the confidence monitor. Get them from Asana or type them in.';
+    li.innerHTML = '<span class="where">Porch Live</span>No locations in the request file for the third intro slide. Type them in if there are any this week.';
     list.appendChild(li);
     count += 1;
   }
@@ -959,7 +923,7 @@ async function loadFromHash() {
       $('communicator').value = payload.communicator || '';
       $('service-date').value = payload.date || todayIso();
       const loc = payload.locations || {};
-      setLocations(loc.list || [], loc.source || null, loc.task || null);
+      setLocations(loc.list || [], loc.source || null, loc.task || null, !!loc.otherDate);
       $('review-banner').hidden = false;
       state.view = 'grid';
       renderAll();
@@ -1185,15 +1149,6 @@ function bindEvents() {
   });
 
   $('live-locations').addEventListener('change', e => setLocations(splitLocations(e.target.value), e.target.value.trim() ? 'typed' : null));
-  $('btn-fetch-locations').addEventListener('click', () => loadLocationsFromAsana());
-  $('service-date').addEventListener('change', () => {
-    if (state.locations.source === 'asana' || !state.locations.list.length) loadLocationsFromAsana({ quiet: true });
-  });
-  $('asana-token').addEventListener('change', e => {
-    storageSet('asanaToken', e.target.value.trim());
-    if (e.target.value.trim()) loadLocationsFromAsana();
-    else renderLocationsStatus();
-  });
 
   $('theme-select').addEventListener('change', async e => {
     const theme = THEMES.find(t => t.id === e.target.value);
@@ -1212,7 +1167,6 @@ async function init() {
   $('dim-value').textContent = `${Math.round(state.dimOpacity * 100)}%`;
   $('context-verses').value = String(state.context);
   $('service-date').value = todayIso();
-  $('asana-token').value = storageGet('asanaToken', '');
   renderLocationsStatus();
   $('theme-select').innerHTML = THEMES.map(t => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('');
   setBg(storageGet('bg', 'video'));

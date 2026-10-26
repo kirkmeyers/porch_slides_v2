@@ -3,6 +3,7 @@
 # communicator: Jane Smith
 # title: Idolatry Week 7
 # date: 2026-10-27
+# locations: Fort Worth, Midland, Greater Lafayette
 Slide 1: Mark 9:9-13 (ESV)
 Slide 2: Theology of Suffering
 Slide 3: Romans 8:18 (NIV)

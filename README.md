@@ -16,7 +16,7 @@ Vite, fully client-side, hosted on GitHub Pages.
 - **Points and quotes:** points are balanced over their lines. Quotes go in quotation marks with the author below. The Inner Life sets points in sentence case, keeping capitals on names for God.
 - **Warnings where the operator sees them:** verse text that came from the request file or was pasted in, verses that still need text, text too tall for the box, and request lines the tool didn't understand. These are listed in the left panel and badged on each slide. The editor shows each slide's line count against the box's limit.
 - **Grid and editor:** in the grid, click to select, use the arrow keys to move, drag to reorder, press Delete to remove the selected slide (⌘Z undoes it), and double-click or press Enter to open a slide. In the editor, type directly on the slide as in ProPresenter. Enter adds a line break, Option+Enter splits the slide at the cursor, and Dim / undim (⌘D) dims the selected words. The context buttons add or remove a verse above or below. Esc goes back to the grid. You can also merge, delete, and add blank slides.
-- **Porch Live locations, from Asana:** each week's locations (for example "Fort Worth, Midland, Greater Lafayette") go on the third intro slide, "Porch Live Locations - Confidence ONLY": as text on the theme's point slide, one location per line, and in its notes. With an Asana personal access token in Settings, the tool finds that week's "Live Locations Week N" task by its due date and reads the newest comment that lists locations for the date ("For 10/27: Fort Worth, Midland, Greater Lafayette"). It checks again when the date changes, and **From Asana** checks again on demand, for a late change. A `# locations:` line in the request file takes their place, and you can type over them. The token is kept only in that browser.
+- **Porch Live locations:** the PCO listener on Pro 3 adds the week's locations, from that week's "Live Locations" task in Asana, to the request file (`# locations:`). They go on the third intro slide, "Porch Live Locations - Confidence ONLY": as text on the theme's point slide, one location per line, and in its notes. A `# locations-task:` link shows next to them for checking, and you can type over them. If there are none, the slide stays blank and the left panel says so.
 - **Slide notes** for the confidence monitor, as porch_slides writes them ("Mark 9:10 - So they kept the matter…", the quote and author, or the point), plus any notes you add.
 - **Exports:**
   - **ProPresenter bundle** (`YYYYMMDD - Porch - LastName.probundle`): live text built from the theme's template slides, starting with the five intro blanks (the third labeled "Porch Live Locations - Confidence ONLY") and ending with a blank.
@@ -58,7 +58,8 @@ The same format as porch_slides: plain UTF-8 text, one slide request per line, w
 # communicator: Jane Smith    last name goes in the file names
 # title: Idolatry Week 7      shown in the tool only
 # date: 2026-10-27            for file names (new; defaults to today)
-# locations: Fort Worth, Midland   Porch Live locations (new; otherwise from Asana)
+# locations: Fort Worth, Midland   Porch Live locations, from the PCO listener (new)
+# locations-task: https://app.asana.com/…   the Asana task they came from (new, optional)
 Slide 1: Mark 9:9-13 (ESV)
 Slide 2: Romans 8:18 (NIV)
 > 18 For I consider that our present sufferings…
@@ -71,6 +72,7 @@ Slide 4: Charles Spurgeon – "I have learned to kiss the wave that throws me ag
 - `Author – quote` (with spaces around the dash) is a quote. `"Quote" – Author` works too.
 - Anything else is a point.
 - Cross-chapter ranges (`John 3:36-4:2`) aren't supported; request each chapter on its own line.
+- `# locations:` takes a plain list ("Fort Worth, Midland and Greater Lafayette") or the Asana comment as written ("For 10/27: Fort Worth, Midland"). A dated value for a different day than `# date:` is flagged.
 
 ### Opening from a link
 
@@ -106,14 +108,13 @@ src/elements.js                 moving and restyling theme elements
 src/propresenter.js             live-text .pro / .probundle export
 src/protobuf.js                 small schema-less protobuf reader/writer
 src/links.js                    #outline= and #review= links
-src/asana.js                    the week's Porch Live locations from Asana
+src/locations.js                reading the Porch Live locations line
 src/themes/                     theme files and layouts
 src/fonts/                      slide fonts and UI fonts (Lato, Oswald)
 ```
 
 ## Notes
 
-- The Asana token lives in the browser's local storage for this site's address. On GitHub Pages that address is shared by every `kirkmeyers.github.io` site, so use a token only on a computer you trust, and revoke it in Asana if it's ever exposed.
 - Slide text is plain text with a little markup: `\n` for a line break, `{…}` for dimmed words, `^12^` for a verse number.
 - Context verses are dimmed with true text opacity in the bundle (a fourth, alpha value in the RTF's expanded color table), the same way the Lover's template stores its own see-through sample text.
 - Fonts: IBM Plex Mono is under the SIL Open Font License. Neue Haas Grotesk Display Pro is a commercial font, copied from porch_slides; check its license before this repository is made public.
