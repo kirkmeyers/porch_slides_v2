@@ -279,6 +279,87 @@ export function layoutPassage(verses, targets, opts) {
   return slides;
 }
 
+/** True when the verses read are the whole chapter, 1 through its last verse. */
+export function isWholeChapter(verses, targets) {
+  const last = Math.max(...verses.map(v => v.verse));
+  return targets.length > 1 && targets[0] === Math.min(...verses.map(v => v.verse)) && targets[targets.length - 1] === last
+    && targets.every((t, i) => !i || t === targets[i - 1] + 1);
+}
+
+/**
+ * Lay out a whole chapter, the way Kirk lays them out by hand (1 Corinthians
+ * 13, October 2026):
+ *   - the first block starts at the chapter's first verse, and the highlight
+ *     walks down it while a whole verse is left below it;
+ *   - each later block starts one verse above, with the verse just read, and
+ *     the highlight moves on to a new block once the next verse would start
+ *     below the middle of the box;
+ *   - the last block ends on the chapter's last verse and reaches back as far
+ *     as fits, so the chapter doesn't end on a half-empty slide.
+ */
+export function layoutChapter(verses, targets, opts) {
+  const { maxLines, countLines } = opts;
+  const at = n => verses.find(v => v.verse === n);
+  const middle = Math.ceil(maxLines / 2);
+  const last = targets[targets.length - 1];
+  const wholeText = (from, to, target) => blockText(verses.filter(v => v.verse >= from && v.verse <= to), target, null, opts);
+  const fits = (from, to) => countLines(wholeText(from, to, null)) <= maxLines;
+  // The line a verse starts on within a block's text
+  const startLine = (text, verse) => {
+    const at = text.indexOf(`^${verse}^`);
+    const word = text.slice(at).match(/^\^\d+\^\S*/)[0];
+    return countLines(text.slice(0, at) + word);
+  };
+
+  const slides = [];
+  let i = 0;
+  let first = true;
+  while (i < targets.length) {
+    const target = targets[i];
+    const v = at(target);
+    if (!v) {
+      i += 1;
+      continue;
+    }
+    // A verse too long for one slide on its own is split across slides
+    if (countLines(blockText([v], target, null, opts)) > maxLines) {
+      splitLongVerse(target, v.text, opts).forEach((text, p, all) => {
+        slides.push({ verse: target, text, start: target, end: target, lines: countLines(text), split: all.length > 1 ? p + 1 : 0 });
+      });
+      i += 1;
+      first = false;
+      continue;
+    }
+
+    const above = first || !at(target - 1) ? target : target - 1;
+
+    // The rest of the chapter fits: end on its last verse, reaching back as far as fits
+    if (fits(above, last)) {
+      let start = above;
+      while (at(start - 1) && fits(start - 1, last)) start -= 1;
+      for (; i < targets.length; i++) {
+        const text = wholeText(start, last, targets[i]);
+        slides.push({ verse: targets[i], text, start, end: last, lines: countLines(text) });
+      }
+      break;
+    }
+
+    const block = fillBlock(verses, target, above, opts);
+    const lastWhole = block.whole[block.whole.length - 1];
+    const textFor = t => blockText(block.whole.map(n => at(n)), t, block.partial ? { verse: block.end, text: block.partial } : null, opts);
+    do {
+      const text = textFor(targets[i]);
+      slides.push({ verse: targets[i], text, start: block.start, end: block.end, lines: countLines(text) });
+      i += 1;
+      const next = targets[i];
+      if (next === undefined || !block.whole.includes(next)) break;
+      if (first ? next >= lastWhole : startLine(textFor(next), next) > middle) break;
+    } while (i < targets.length);
+    first = false;
+  }
+  return slides;
+}
+
 /**
  * Rebuild one slide's block between two verses (the editor's context buttons):
  * whole verses from `start` to `end`, the target at full strength.

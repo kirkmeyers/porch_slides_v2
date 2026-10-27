@@ -30,7 +30,7 @@
 
 import { normalizeTranslation, translationName, canFetchTranslation, TRANSLATIONS, cleanVerseText, smartQuotes } from './bible.js';
 import { parseVerseLines, sentenceCase } from './requests.js';
-import { layoutPassage, passageFormat, blockText } from './passage.js';
+import { layoutPassage, layoutChapter, isWholeChapter, passageFormat, blockText } from './passage.js';
 import { countLines, balanceLines, preventOrphan, textArea, applyCase, maxLinesFor } from './layout.js';
 
 let nextId = 1;
@@ -116,7 +116,9 @@ export function passageSlides(passage, { layouts, measure, metricsFor, context =
     slides = passage.targets.map(needs);
   } else {
     const format = passageFormat(passage.bookId, passage.chapter, passage.verses);
-    const laid = layoutPassage(passage.verses, passage.targets, {
+    // A whole chapter has its own rules; see layoutChapter
+    const layout = isWholeChapter(passage.verses, passage.targets) ? layoutChapter : layoutPassage;
+    const laid = layout(passage.verses, passage.targets, {
       ...box,
       format,
       bookId: passage.bookId,
@@ -292,6 +294,8 @@ export async function buildSlides(parsed, ctx) {
     };
     if (manuscript) passage.checks.push('Verse text came from the request file; check it against the Bible.');
     await loadPassageText(passage, ctx.fetchChapter);
+    // "1 Corinthians 13" with no verses asks for the whole chapter
+    if (entry.wholeChapter && passage.verses) passage.targets = passage.verses.map(v => v.verse);
     passages[group] = passage;
     slides.push(...passageSlides(passage, ctx));
   }

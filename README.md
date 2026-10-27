@@ -10,6 +10,7 @@ Vite, fully client-side, hosted on GitHub Pages.
 
 - **Four ways to load requests:** the Load requests button, dragging the `.txt` onto the page, **Paste text** (a box for request text in the same format; ⌘Enter builds), or a `#outline=` link (same encoding as porch_slides).
 - **Scripture the Porch way:** one slide per verse read. Each slide shows a block of verses filled to nine lines, with the verse being read at full strength and the context verses around it dimmed. The block stays put while the highlight moves down it, and a new block starts (keeping up to two verses already read above) when the next verse would run out of context. A block always starts on a whole verse, and the last verse can be cut short to fill the last line. A single-verse request gets up to two verses of context above it (Settings: 2, 1 or none).
+- **Whole chapters** (`1 Corinthians 13`, or `1 Corinthians 13:1-13`) follow the layout Kirk builds by hand. The first block starts at verse 1 and the highlight walks down it while a whole verse is left below. Each later block starts one verse above, with the verse just read, and moves on once the next verse would start below the middle of the box (line 5 of 9). The last block ends on the chapter's last verse and reaches back as far as fits, so the chapter doesn't end on a half-empty slide.
 - **Verse numbers** are superscript, written the way ProPresenter writes them, so they stay superscript after import.
 - **Poetry:** Job, Psalms, Proverbs, Song of Solomon and Lamentations are broken at their pauses (semicolons and colons, then conjunctions, then a long line's middle comma) and set flush left. Well-known poems inside prose books (Isaiah 6:3, the Magnificat, Philippians 2:6-11 and others) are set in their lines too.
 - **Translations:** a translation named on the request line (`Romans 8:18 (NIV)`) or in `# translation:` is used; Bolls supplies the text. In the editor, the Translation picker (ESV, KJV, NIV, NIV 84, NASB, NASB 1995, NLT, ASV, CSB, the same list as porch_slides) switches the whole passage. Bolls doesn't carry the NIV, so NIV passages take pasted verses (one per line, starting with the verse number) or text typed on the slide. Any of these translations can come from a local file instead (see below).
@@ -67,7 +68,7 @@ Slide 3: Theology of Suffering
 Slide 4: Charles Spurgeon – "I have learned to kiss the wave that throws me against the Rock of Ages."
 ```
 
-- A line with a book, chapter and verses is scripture: `Mark 9:9-13`, `Psalm 46:1-3`, `Luke 1:46; 48` and so on. Back-to-back requests from the same chapter (`Mark 9:9-10`, then `Mark 9:11`) become one passage.
+- A line with a book, chapter and verses is scripture: `Mark 9:9-13`, `Psalm 46:1-3`, `Luke 1:46; 48` and so on. A book and chapter with no verses (`1 Corinthians 13`, `Psalm 23 (NIV 84)`) is the whole chapter. Back-to-back requests from the same chapter (`Mark 9:9-10`, then `Mark 9:11`) become one passage.
 - `>` lines right after a scripture line give its verse text, one verse per line with its number. That text is used instead of Bolls, and the slide is flagged to check it.
 - `Author – quote` (with spaces around the dash) is a quote. `"Quote" – Author` works too.
 - Anything else is a point.

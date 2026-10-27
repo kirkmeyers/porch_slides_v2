@@ -68,3 +68,36 @@ test('poetry breaks at its pauses, and poems inside prose are set in lines', () 
     '^3^And one called to another and said:\n“Holy, holy, holy is the LORD of hosts;\nthe whole earth is full of his glory!”',
   );
 });
+
+test('a whole chapter: one verse of context above, a new block past the middle, the last block full', async () => {
+  const { layoutChapter, isWholeChapter } = await import('../src/passage.js');
+  // Verses of different lengths, as in a real chapter
+  const lengths = [2, 3, 2, 2, 2, 1, 2, 3, 1, 1, 3, 3, 2];
+  const ch = lengths.map((n, i) => ({ verse: i + 1, text: Array.from({ length: n * 6 }, () => 'word').join(' ') }));
+  const targets = ch.map(v => v.verse);
+  assert.equal(isWholeChapter(ch, targets), true);
+  assert.equal(isWholeChapter(ch, [3, 4, 5]), false);
+  const slides = layoutChapter(ch, targets, opts);
+  assert.deepEqual(slides.map(s => s.verse), targets);
+  assert.ok(slides.every(s => s.lines <= 9));
+  // Blocks, in order, with the verses read in each
+  const blocks = [];
+  for (const s of slides) {
+    const last = blocks[blocks.length - 1];
+    if (last && last.start === s.start && last.end === s.end) last.read.push(s.verse);
+    else blocks.push({ start: s.start, end: s.end, read: [s.verse] });
+  }
+  assert.ok(blocks.length > 2);
+  assert.equal(blocks[0].start, 1);
+  // Every later block but the last starts one verse above its first verse read
+  blocks.slice(1, -1).forEach(b => assert.equal(b.start, b.read[0] - 1));
+  // The last block ends on the last verse and can't reach back any further
+  const final = blocks[blocks.length - 1];
+  assert.equal(final.end, 13);
+  assert.ok(final.start <= final.read[0] - 1);
+});
+
+test('a short passage keeps the porch_slides rules', async () => {
+  const { isWholeChapter } = await import('../src/passage.js');
+  assert.equal(isWholeChapter(chapter, [9, 10, 11, 12]), false);
+});

@@ -59,3 +59,10 @@ test('sentence case keeps capitals on names for God', () => {
   assert.equal(sentenceCase('THE HOLY SPIRIT LEADS US'), 'The Holy Spirit leads us');
   assert.equal(sentenceCase('Trusting god in chapter ii'), 'Trusting God in chapter II');
 });
+
+test('a book and chapter with no verses asks for the whole chapter', () => {
+  const p = parseRequestFile('Slide 1: 1 Corinthians 13\nSlide 2: Psalm 23 (NIV 84)\nSlide 3: Top 10 reasons');
+  assert.deepEqual([p.entries[0].type, p.entries[0].book, p.entries[0].chapter, p.entries[0].wholeChapter], ['scripture', '1 Corinthians', 13, true]);
+  assert.equal(p.entries[1].translation, 'NIV 84');
+  assert.equal(p.entries[2].type, 'point');
+});

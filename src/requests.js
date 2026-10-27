@@ -10,6 +10,7 @@
  *   # locations: Fort Worth, Midland   Porch Live locations, from the PCO listener (Asana)
  *   # locations-task: https://app.asana.com/…   optional link to that Asana task
  *   Slide 1: Mark 9:9-13 (ESV)    scripture: one slide per verse
+ *   Slide 2: 1 Corinthians 13     a whole chapter
  *   Slide 2: Romans 8:18 (NIV)
  *   > 18 For I consider that…     verse text for the line above (one verse per line)
  *   Slide 3: Theology of Suffering                 a point
@@ -36,6 +37,8 @@ const SCRIPTURE = new RegExp(String.raw`^([1-3]?\s*[^:\n]+?)\s+(\d+)\s*:\s*([\d\
 const CROSS_CHAPTER = new RegExp(String.raw`^([1-3]?\s*[^:\n]+?)\s+(\d+)\s*:\s*(\d+)\s*[-–—]\s*(\d+)\s*:\s*(\d+)` + TRANSLATION_SUFFIX + '$', 'i');
 const QUOTE = /^([^-–—\n]+?)\s+[-–—]\s+["“'‘]?([\s\S]+?)["”'’]?\s*$/;
 const CHAPTER_VERSE = /\d+\s*:\s*\d+/;
+// A whole chapter: "1 Corinthians 13", "Psalm 23 (NIV 84)"
+const WHOLE_CHAPTER = /^([1-3]?\s*[^:\d\n]+?)\s+(\d+)\s*(?:\(([A-Za-z0-9\s]+)\))?$/i;
 
 /** "9-13", "60; 66", "7-8, 10" -> sorted unique verse numbers. */
 export function parseVerseList(str) {
@@ -112,6 +115,13 @@ export function parseRequestFile(text) {
     const entry = scripture && scriptureEntry(scripture, clean);
     if (entry) {
       entries.push(entry);
+      continue;
+    }
+
+    const chapter = clean.match(WHOLE_CHAPTER);
+    const chapterBook = chapter && lookupBook(chapter[1].trim());
+    if (chapterBook) {
+      entries.push({ type: 'scripture', bookId: chapterBook.id, book: chapterBook.name, chapter: +chapter[2], verses: [], wholeChapter: true, translation: chapter[3]?.trim() || null, lines: [], checks: [], raw: clean });
       continue;
     }
 
