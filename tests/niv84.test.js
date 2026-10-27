@@ -10,7 +10,7 @@ const sample = { translation: 'NIV', name: 'NIV 84', books: { 43: { 11: { 35: 'J
 test('reads the NIV 84 file Sunday Slides makes', () => {
   assert.equal(verseCount(sample), 2);
   assert.match(validateBible(sample), /66/); // a real file has all 66 books
-  assert.match(validateBible({ hello: 1 }), /niv84\.json/);
+  assert.match(validateBible({ hello: 1 }), /npm run rvbible/);
 });
 
 test('a passage takes its NIV 84 text from the loaded file', async () => {

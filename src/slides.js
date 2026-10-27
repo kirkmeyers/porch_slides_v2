@@ -232,7 +232,7 @@ export async function loadPassageText(passage, fetchChapter) {
   }
   if (!canFetchTranslation(passage.translation)) {
     passage.verses = null;
-    passage.checks.push(`Bolls doesn’t carry the ${translationName(passage.translation)}. Paste the verses in the editor or type them on each slide${passage.translation === 'NIV' ? ', or load the NIV 84 file in Settings' : ''}.`);
+    passage.checks.push(`Bolls doesn’t carry the ${translationName(passage.translation)}. Paste the verses in the editor, type them on each slide, or load its translation file in Settings.`);
     return;
   }
   passage.verses = await fetchChapter(passage.bookId, passage.chapter, passage.translation);

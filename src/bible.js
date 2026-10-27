@@ -151,8 +151,8 @@ export function isNivTranslation(t) {
   return /^NIV/i.test((t || '').trim());
 }
 
-// Translations loaded from a file on this machine (the NIV 84 made by Sunday Slides'
-// npm run niv84),
+// Translations loaded from a file on this machine (made by Sunday Slides'
+// npm run niv84 and npm run rvbible),
 // keyed by code: { books: { [bookId]: { [chapter]: { [verse]: text } } } }
 const localBibles = {};
 

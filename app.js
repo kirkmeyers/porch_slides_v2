@@ -221,21 +221,24 @@ async function loadFontFile(file) {
   showToast('Neue Haas Grotesk is loaded on this computer.');
 }
 
-// ---------- NIV 84 file (Settings) ----------
-// The same niv84.json Sunday Slides loads, made there by npm run niv84.
+// ---------- Translation files (Settings) ----------
+// The same files Sunday Slides loads, made there by npm run niv84 or npm run rvbible.
+// [{ code, name, verses }] for the translation files stored in this browser
+let localBibleList = [];
+
 function renderLocalBibles(list) {
-  const niv = list.find(b => b.code === 'NIV');
-  $('niv84-status').textContent = niv
-    ? `Loaded on this computer: ${niv.verses.toLocaleString()} verses.`
-    : 'Not on this computer. Load the niv84.json that Sunday Slides makes (npm run niv84) here once.';
-  $('btn-remove-niv84').hidden = !niv;
-  $('btn-load-niv84').textContent = niv ? 'Replace NIV 84 file' : 'Load NIV 84 file';
+  localBibleList = [...list].sort((a, b) => a.name.localeCompare(b.name));
+  $('bibles-status').textContent = localBibleList.length
+    ? 'Loaded on this computer:'
+    : 'None on this computer. Load the files Sunday Slides makes (npm run niv84 or npm run rvbible) here once.';
+  $('bibles-list').innerHTML = localBibleList.map(b => `<li><span>${escapeHtml(b.name)} <small>${b.verses.toLocaleString()} verses</small></span>
+    <button class="btn btn-small" data-remove="${escapeHtml(b.code)}">Remove</button></li>`).join('');
 }
 
-/** Lay out again the passages that were waiting for NIV 84 text. */
-async function refreshNivPassages() {
+/** Lay out again the passages in these translations that were waiting for text. */
+async function refreshWaitingPassages(codes) {
   for (const passage of Object.values(state.passages)) {
-    if (passage.translation !== 'NIV' || (passage.manuscript && passage.sourceTranslation === 'NIV')) continue;
+    if (!codes.includes(passage.translation) || passage.verses) continue;
     const [start, end] = groupRange(passage.group);
     if (start < 0 || state.slides.slice(start, end + 1).some(s => s.edited)) continue;
     passage.checks = passage.checks.filter(c => !/Bolls|aren’t in the/.test(c));
@@ -245,23 +248,42 @@ async function refreshNivPassages() {
   renderAll();
 }
 
-async function loadNiv84File(file) {
+/** Read one translation file. Returns the parsed data, or a reason it can't be used. */
+async function readBibleFile(file) {
   let data;
   try {
     data = JSON.parse(await file.text());
   } catch {
-    showToast('That file isn’t readable JSON.', 'warn');
-    return;
+    return { problem: `${file.name} isn’t readable JSON.` };
   }
-  const problem = validateBible(data) || (data.translation !== 'NIV' ? 'That isn’t the NIV 84 file.' : '');
-  if (problem) {
-    showToast(problem, 'warn', 6000);
-    return;
+  const problem = validateBible(data);
+  return problem ? { problem: `${file.name}: ${problem}` } : { data };
+}
+
+async function loadBibleFiles(files) {
+  const loaded = [];
+  for (const file of files) {
+    const { data, problem } = await readBibleFile(file);
+    if (problem) {
+      showToast(problem, 'warn', 6000);
+      continue;
+    }
+    try {
+      await saveLocalBible(data);
+    } catch (err) {
+      console.error(err);
+      showToast(`Couldn’t store ${file.name} in this browser.`, 'warn');
+      continue;
+    }
+    const bible = { code: data.translation, name: data.name || translationName(data.translation), verses: verseCount(data) };
+    localBibleList = [...localBibleList.filter(b => b.code !== bible.code), bible];
+    loaded.push(bible);
   }
-  await saveLocalBible(data);
-  renderLocalBibles([{ code: 'NIV', verses: verseCount(data) }]);
-  await refreshNivPassages();
-  showToast('NIV 84 is loaded on this computer.');
+  if (!loaded.length) return;
+  renderLocalBibles(localBibleList);
+  await refreshWaitingPassages(loaded.map(b => b.code));
+  const names = loaded.map(b => b.name).join(', ');
+  showToast(`${names} ${loaded.length === 1 ? 'is' : 'are'} loaded on this computer.`);
 }
 
 // ---------- Porch Live locations ----------
@@ -1258,18 +1280,20 @@ function bindEvents() {
     if (state.view === 'grid') renderGrid();
     else drawEditorCanvas();
   });
-  $('btn-load-niv84').addEventListener('click', () => $('niv84-input').click());
-  $('niv84-input').addEventListener('change', async e => {
-    const file = e.target.files[0];
+  $('btn-load-bibles').addEventListener('click', () => $('bibles-input').click());
+  $('bibles-input').addEventListener('change', async e => {
+    const files = [...e.target.files];
     e.target.value = '';
-    if (file) await loadNiv84File(file);
+    if (files.length) await loadBibleFiles(files);
   });
-  $('btn-remove-niv84').addEventListener('click', async () => {
-    if (!confirm('Remove the NIV 84 text from this browser?')) return;
-    await removeLocalBible('NIV');
-    renderLocalBibles([]);
+  $('bibles-list').addEventListener('click', async e => {
+    const code = e.target.closest('[data-remove]')?.dataset.remove;
+    const bible = localBibleList.find(b => b.code === code);
+    if (!bible || !confirm(`Remove the ${bible.name} text from this browser?`)) return;
+    await removeLocalBible(code);
+    renderLocalBibles(localBibleList.filter(b => b.code !== code));
     renderAll();
-    showToast('NIV 84 removed from this computer.');
+    showToast(`${bible.name} removed from this computer.`);
   });
   $('btn-load-font').addEventListener('click', () => $('font-input').click());
   $('font-input').addEventListener('change', async e => {
