@@ -30,7 +30,7 @@
 
 import { normalizeTranslation, translationName, canFetchTranslation, TRANSLATIONS, cleanVerseText, smartQuotes } from './bible.js';
 import { parseVerseLines, sentenceCase } from './requests.js';
-import { layoutPassage, layoutChapter, isWholeChapter, passageFormat, blockText } from './passage.js';
+import { layoutPassage, passageFormat, blockText } from './passage.js';
 import { countLines, balanceLines, preventOrphan, textArea, applyCase, maxLinesFor } from './layout.js';
 
 let nextId = 1;
@@ -116,9 +116,7 @@ export function passageSlides(passage, { layouts, measure, metricsFor, context =
     slides = passage.targets.map(needs);
   } else {
     const format = passageFormat(passage.bookId, passage.chapter, passage.verses);
-    // A whole chapter has its own rules; see layoutChapter
-    const layout = isWholeChapter(passage.verses, passage.targets) ? layoutChapter : layoutPassage;
-    const laid = layout(passage.verses, passage.targets, {
+    const laid = layoutPassage(passage.verses, passage.targets, {
       ...box,
       format,
       bookId: passage.bookId,

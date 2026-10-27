@@ -45,9 +45,9 @@ test('starts a new block when the verse being read would run out of context', ()
   const slides = layoutPassage(chapter, Array.from({ length: 12 }, (_, i) => i + 1), opts);
   const starts = [...new Set(slides.map(s => s.start))];
   assert.ok(starts.length > 1);
-  // A later block keeps up to two verses already read above as context
+  // A later block keeps the verse just read above as context
   const second = slides.find(s => s.start !== 1);
-  assert.equal(second.verse - second.start, 2);
+  assert.equal(second.verse - second.start, 1);
 });
 
 test('splits a verse too long for one slide', () => {
@@ -69,35 +69,31 @@ test('poetry breaks at its pauses, and poems inside prose are set in lines', () 
   );
 });
 
-test('a whole chapter: one verse of context above, a new block past the middle, the last block full', async () => {
-  const { layoutChapter, isWholeChapter } = await import('../src/passage.js');
+test('the block changes as few times as it can', () => {
   // Verses of different lengths, as in a real chapter
   const lengths = [2, 3, 2, 2, 2, 1, 2, 3, 1, 1, 3, 3, 2];
   const ch = lengths.map((n, i) => ({ verse: i + 1, text: Array.from({ length: n * 6 }, () => 'word').join(' ') }));
-  const targets = ch.map(v => v.verse);
-  assert.equal(isWholeChapter(ch, targets), true);
-  assert.equal(isWholeChapter(ch, [3, 4, 5]), false);
-  const slides = layoutChapter(ch, targets, opts);
-  assert.deepEqual(slides.map(s => s.verse), targets);
+  const slides = layoutPassage(ch, ch.map(v => v.verse), opts);
+  assert.deepEqual(slides.map(s => s.verse), ch.map(v => v.verse));
   assert.ok(slides.every(s => s.lines <= 9));
-  // Blocks, in order, with the verses read in each
   const blocks = [];
   for (const s of slides) {
     const last = blocks[blocks.length - 1];
     if (last && last.start === s.start && last.end === s.end) last.read.push(s.verse);
     else blocks.push({ start: s.start, end: s.end, read: [s.verse] });
   }
-  assert.ok(blocks.length > 2);
   assert.equal(blocks[0].start, 1);
-  // Every later block but the last starts one verse above its first verse read
-  blocks.slice(1, -1).forEach(b => assert.equal(b.start, b.read[0] - 1));
-  // The last block ends on the last verse and can't reach back any further
-  const final = blocks[blocks.length - 1];
-  assert.equal(final.end, 13);
-  assert.ok(final.start <= final.read[0] - 1);
-});
-
-test('a short passage keeps the porch_slides rules', async () => {
-  const { isWholeChapter } = await import('../src/passage.js');
-  assert.equal(isWholeChapter(chapter, [9, 10, 11, 12]), false);
+  blocks.forEach((b, k) => {
+    const lastRead = b.read[b.read.length - 1];
+    const next = blocks[k + 1];
+    if (next) {
+      // A block only changes when the next verse would have no whole verse below it
+      // (the block's last whole verse is its end, or the one before a cut-short verse)
+      assert.ok(next.read[0] >= b.end - 1, `block ${k} changed before it had to`);
+      // and the new block keeps the verse just read on top
+      if (k + 1 < blocks.length - 1) assert.equal(next.start, lastRead);
+    }
+  });
+  // The last block ends on the chapter's last verse
+  assert.equal(blocks[blocks.length - 1].end, 13);
 });
