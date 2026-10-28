@@ -11,10 +11,11 @@
  *   Graphics.Element   3 bounds { 1 origin { 1 x, 2 y }, 2 size { 1 w, 2 h } }, 13 Text
  *   Text               3 attributes, 5 RTF
  *   Text.attributes    2 capitalization (1 all caps), 3 color { 1 r, 2 g, 3 b, 4 a },
- *                      6 paragraph style { 1 alignment }, 13 per-range attributes
+ *                      6 paragraph style { 1 alignment },
+ *                      13 per-range attributes { 1 range { 1 location, 2 length }, 2 capitalization, … }
  */
 
-import { decode, encode, get, getMessage, setField, messageField, varintField, doubleField, floatField } from './protobuf.js';
+import { decode, encode, get, getMessage, setField, messageField, varintField, doubleField, floatField, asInt } from './protobuf.js';
 
 const encoder = new TextEncoder();
 
@@ -35,10 +36,11 @@ export function setRtfAlign(rtf, align) {
 
 /**
  * @param raw     Slide.Element bytes
- * @param change  { bounds?, align?, caps?, rtf?, opaque?, dropRanges? }
+ * @param change  { bounds?, align?, caps?, rtf?, opaque?, dropRanges?, length? }
  *   rtf        new RTF text for the text box
  *   opaque     make the box's default text color fully opaque (the RTF sets the real colors)
  *   dropRanges remove per-range attributes copied from the template's sample text
+ *   length     the new text's length (UTF-16), for the all-caps range that replaces them
  * @returns new Slide.Element bytes
  */
 export function rewriteElement(raw, change) {
@@ -69,7 +71,14 @@ export function rewriteElement(raw, change) {
         const color = getMessage(attrs, 3);
         if (color) attrs = setField(attrs, messageField(3, setField(color, floatField(4, 1))));
       }
-      if (change.dropRanges) attrs = attrs.filter(f => f.field !== 13);
+      if (change.dropRanges) {
+        attrs = attrs.filter(f => f.field !== 13);
+        // ProPresenter shows all caps only over a capitalization range, not from the box setting alone
+        const caps = get(attrs, 2);
+        if (caps && asInt(caps) === 1 && change.length) {
+          attrs.push(messageField(13, [messageField(1, [varintField(2, change.length)]), varintField(2, 1)]));
+        }
+      }
       text = setField(text, messageField(3, attrs));
     }
     el = setField(el, messageField(13, text));

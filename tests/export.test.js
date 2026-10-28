@@ -6,7 +6,7 @@ import { THEME_CONFIGS } from '../src/themes/configs.js';
 import { parseRequestFile } from '../src/requests.js';
 import { buildSlides } from '../src/slides.js';
 import { buildPresentation, fillRtf, withBlanks, slideNotes } from '../src/propresenter.js';
-import { decode, get, getAll, getMessage, asString, asDouble } from '../src/protobuf.js';
+import { decode, get, getAll, getMessage, asString, asDouble, asInt } from '../src/protobuf.js';
 
 const measure = (s, style) => s.length * style.size * 0.5;
 const metricsFor = style => ({ ascent: style.size * 0.95, descent: style.size * 0.25 });
@@ -88,7 +88,8 @@ test('exports live text with the intro blanks, a closing blank and clean text at
   assert.ok(!text.includes('Lorum ipsem'), 'template sample text is replaced');
   assert.ok(text.includes('Theology of suffering'), 'Inner Life points are in sentence case');
 
-  // The template's per-range attributes (sized for its sample text) are dropped
+  // The template's per-range attributes (sized for its sample text) are dropped;
+  // an all-caps box gets one capitalization range over its new text
   const firstScripture = cues[5];
   const found = [];
   const walk = (bytesIn, depth) => {
@@ -104,8 +105,19 @@ test('exports live text with the intro blanks, a closing blank and clean text at
   };
   walk(firstScripture.value, 0);
   assert.ok(found.length >= 2);
+  let capsBoxes = 0;
   for (const textMsg of found) {
     const attrs = getMessage(textMsg, 3);
-    if (attrs) assert.equal(getAll(attrs, 13).length, 0);
+    if (!attrs) continue;
+    const ranges = getAll(attrs, 13).map(f => decode(f.value));
+    if (asInt(get(attrs, 2)) !== 1) {
+      assert.equal(ranges.length, 0);
+      continue;
+    }
+    capsBoxes += 1;
+    assert.equal(ranges.length, 1);
+    assert.equal(asInt(get(getMessage(ranges[0], 1), 2)), 'Mark\n9:9'.length);
+    assert.equal(asInt(get(ranges[0], 2)), 1);
   }
+  assert.equal(capsBoxes, 1, 'the reference');
 });

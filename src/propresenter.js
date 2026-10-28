@@ -140,8 +140,8 @@ function relinkImageFill(el, fileName) {
 }
 
 /** Copy a template Slide.Element, replacing its text (if given) and relinking images. */
-function buildElement(element, newRtf, align) {
-  const raw = newRtf != null ? rewriteElement(element.raw, { rtf: newRtf, align, opaque: true, dropRanges: true }) : element.raw;
+function buildElement(element, newRtf, align, length = 0) {
+  const raw = newRtf != null ? rewriteElement(element.raw, { rtf: newRtf, align, opaque: true, dropRanges: true, length }) : element.raw;
   if (!element.image) return raw;
   let se = decode(raw);
   const el = relinkImageFill(decode(get(se, 1).value), element.image);
@@ -172,14 +172,17 @@ function buildBaseSlide(slide, layouts, size, dimOpacity) {
     for (const element of layout.slide.elements) {
       let rtf = null;
       let align = null;
+      let text = null;
       if (element === layout.text) {
-        const text = slide.kind === 'blank' || slide.needsText ? '' : slide.text;
+        text = slide.kind === 'blank' || slide.needsText ? '' : slide.text;
         align = slide.align || null;
         rtf = fillRtf(element.rtf, text, dimOpacity, align);
       } else if (element === layout.reference) {
-        rtf = fillRtf(element.rtf, slide.kind === 'blank' ? '' : slide.reference || '', dimOpacity);
+        text = slide.kind === 'blank' ? '' : slide.reference || '';
+        rtf = fillRtf(element.rtf, text, dimOpacity);
       }
-      fields.push({ field: 1, wire: 2, value: freshUuids(buildElement(element, rtf, align)) });
+      const length = text ? parseRuns(text).reduce((n, r) => n + r.text.length, 0) : 0;
+      fields.push({ field: 1, wire: 2, value: freshUuids(buildElement(element, rtf, align, length)) });
     }
   }
   fields.push(messageField(6, [doubleField(1, size.w), doubleField(2, size.h)]));
