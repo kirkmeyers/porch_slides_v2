@@ -28,7 +28,7 @@
  * }
  */
 
-import { normalizeTranslation, translationName, canFetchTranslation, TRANSLATIONS, cleanVerseText, smartQuotes } from './bible.js';
+import { normalizeTranslation, translationName, canFetchTranslation, hasLocalBible, compareVerse, TRANSLATIONS, cleanVerseText, smartQuotes } from './bible.js';
 import { parseVerseLines, sentenceCase } from './requests.js';
 import { layoutPassage, passageFormat, blockText } from './passage.js';
 import { countLines, balanceLines, preventOrphan, textArea, applyCase, maxLinesFor } from './layout.js';
@@ -221,12 +221,13 @@ export function translationCode(raw) {
 }
 
 /**
- * Get a passage's verse text: the request file's own verses if it has them,
- * otherwise the chapter from Bolls, or from the NIV 84 file loaded in
- * Settings. Bolls doesn't serve the NIV.
+ * Get a passage's verse text: the whole chapter from a translation file loaded
+ * in Settings, otherwise the request file's own verses if it has them,
+ * otherwise the chapter from Bolls. Bolls doesn't serve the NIV.
  */
 export async function loadPassageText(passage, fetchChapter) {
   if (passage.manuscript && passage.translation === passage.sourceTranslation) {
+    if (hasLocalBible(passage.translation) && await useLocalChapter(passage, fetchChapter)) return;
     passage.verses = passage.manuscript;
     return;
   }
@@ -240,6 +241,29 @@ export async function loadPassageText(passage, fetchChapter) {
   else if (passage.targets.some(v => !passage.verses.find(x => x.verse === v))) {
     passage.checks.push(`Some verses of ${passageLabel(passage)} aren’t in the ${translationName(passage.translation)} chapter; check the reference.`);
   }
+}
+
+/**
+ * A loaded translation file is the Bible itself, so it wins over the request
+ * file's verses: the passage gets the whole chapter for its context, and the
+ * request's text is only checked against it. Returns false when the file
+ * doesn't have the verses, so the request's text is used instead.
+ */
+async function useLocalChapter(passage, fetchChapter) {
+  const chapter = await fetchChapter(passage.bookId, passage.chapter, passage.translation);
+  if (!chapter || passage.targets.some(v => !chapter.find(x => x.verse === v))) return false;
+  passage.verses = chapter;
+  passage.checks = passage.checks.filter(c => !/request file/.test(c));
+  const differs = passage.manuscript
+    .filter(m => {
+      const published = chapter.find(x => x.verse === m.verse);
+      return published && compareVerse(m.text, published.text).kind === 'differs';
+    })
+    .map(m => m.verse);
+  if (differs.length) {
+    passage.checks.push(`The request file’s ${differs.length > 1 ? 'verses' : 'verse'} ${differs.join(', ')} ${differs.length > 1 ? 'don’t' : 'doesn’t'} match the ${translationName(passage.translation)} file; the file’s text is used.`);
+  }
+  return true;
 }
 
 /**

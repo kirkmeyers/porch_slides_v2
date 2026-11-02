@@ -6,7 +6,7 @@ import {
 } from './src/slides.js';
 import { parseTheme, resolveLayouts } from './src/theme.js';
 import { setFontMap, measure, fontMetrics, clearMetricsCache, drawSlide, renderSlidePng } from './src/render.js';
-import { fetchChapter, cleanVerseText, canFetchTranslation, translationName, TRANSLATIONS } from './src/bible.js';
+import { fetchChapter, cleanVerseText, canFetchTranslation, hasLocalBible, translationName, TRANSLATIONS } from './src/bible.js';
 import { restoreLocalBibles, saveLocalBible, removeLocalBible, validateBible, verseCount } from './src/local-bibles.js';
 import { parseRuns, plainText, readingText, setDim, isAllDim, sliceText } from './src/layout.js';
 import { createTextBox, bindEditable, textToHtml, selectionOffsets, setSelectionOffsets } from './src/inline-editor.js';
@@ -661,7 +661,8 @@ function renderEditor() {
   $('translation-field').hidden = !passage;
   if (passage) {
     const source = passage.sourceTranslation;
-    const fromFile = !!passage.manuscript;
+    // A loaded translation file wins over the request file's text
+    const fromFile = !!passage.manuscript && !hasLocalBible(source);
     $('edit-translation').innerHTML = Object.entries(TRANSLATIONS)
       .map(([code, name]) => `<option value="${code}">${name}${code === source && fromFile ? ' (request file)' : ''}${!canFetchTranslation(code) && !(code === source && fromFile) ? ' (paste it in)' : ''}</option>`)
       .join('');
@@ -895,8 +896,8 @@ function changeContext(edge, delta) {
 
 /**
  * Switch a passage to another translation, like porch_slides' per-slide
- * picker. Text comes from the request file when switching back to its
- * translation, otherwise from Bolls. Bolls doesn't serve the NIV, so NIV
+ * picker. Text comes from a loaded translation file, then the request file
+ * when switching back to its translation, otherwise from Bolls. Bolls doesn't serve the NIV, so NIV
  * passages wait for pasted verses.
  */
 async function changeTranslation(code) {

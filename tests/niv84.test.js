@@ -30,3 +30,29 @@ test('LORD takes its case from the ESV verse', () => {
   assert.equal(restoreLord('The Lord is my shepherd', 'The LORD is my shepherd; I shall not want.'), 'The LORD is my shepherd');
   assert.equal(restoreLord('the Lord', 'the LORD and the LORD'), 'the Lord');
 });
+
+test('a loaded translation file wins over the request file’s verses', async () => {
+  const niv = { translation: 'NIV2011', name: 'NIV', books: { 45: { 8: { 17: 'Now if we are children, then we are heirs.', 18: 'I consider that our present sufferings are not worth comparing with the glory that will be revealed in us.', 19: 'For the creation waits in eager expectation.' } } } };
+  const request = text => ({
+    bookId: 45, book: 'Romans', chapter: 8, targets: [18], translation: 'NIV2011', sourceTranslation: 'NIV2011', verses: null,
+    manuscript: [{ verse: 18, text }],
+    checks: ['Verse text came from the request file; check it against the Bible.'],
+  });
+  setLocalBible('NIV2011', niv);
+
+  const same = request('I consider that our present sufferings are not worth comparing with the glory that will be revealed in us.');
+  await loadPassageText(same, fetchChapter);
+  assert.deepEqual(same.verses.map(v => v.verse), [17, 18, 19], 'the whole chapter, for context');
+  assert.deepEqual(same.checks, []);
+
+  const typo = request('I think our sufferings are nothing next to the glory to come.');
+  await loadPassageText(typo, fetchChapter);
+  assert.equal(typo.verses.find(v => v.verse === 18).text, niv.books[45][8][18]);
+  assert.match(typo.checks.join(), /verse 18 doesn’t match the NIV file/);
+
+  setLocalBible('NIV2011', null);
+  const none = request('I consider that our present sufferings are not worth comparing with the glory that will be revealed in us.');
+  await loadPassageText(none, fetchChapter);
+  assert.deepEqual(none.verses.map(v => v.verse), [18], 'without the file, the request’s text');
+  assert.match(none.checks.join(), /request file/);
+});
