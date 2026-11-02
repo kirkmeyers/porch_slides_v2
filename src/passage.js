@@ -143,11 +143,12 @@ export function fillBlock(verses, target, start, { maxLines, countLines, format 
     if (count === maxLines) break;
   }
 
-  // Fill out the last line with the start of the next verse
+  // Fill out the last line with the start of the next verse, including the
+  // room left after the last whole verse on line 9
   let partial = null;
   const endWhole = whole.length ? whole[whole.length - 1].verse : start - 1;
   const next = at(endWhole + 1);
-  if (whole.length && next && next.verse !== target && lines(whole) < maxLines) {
+  if (whole.length && next && next.verse !== target) {
     if (format === 'poetry') {
       const couplets = poetryLines(next.text.trim()).split('\n');
       for (let c = 1; c <= couplets.length; c++) {

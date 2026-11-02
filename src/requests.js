@@ -175,15 +175,20 @@ export function dateCode(date) {
 
 /**
  * Sentence case for The Inner Life's points, keeping capitals on names for
- * God, pronouns referring to him, and Roman numerals (from porch_slides).
+ * God and Roman numerals (from porch_slides). A pronoun keeps the case the
+ * request gives it, since "you" is as often the listener as God; in an
+ * all-caps or Title Case request that can't be told, so it goes lowercase.
  */
 const DIVINE = new Set(['god', 'god’s', "god's", 'lord', 'lord’s', "lord's", 'jesus', 'jesus’', "jesus'", 'jesus’s', "jesus's", 'christ', 'christ’s', "christ's", 'father', 'father’s', "father's", 'son', 'son’s', "son's", 'creator', 'almighty', 'savior', 'saviour', 'messiah', 'yahweh', 'jehovah', 'trinity', 'bible', 'scripture', 'scriptures', 'gospel', 'gospels']);
 const REVERENT_PRONOUNS = new Set(['he', 'him', 'his', 'himself', 'you', 'your', 'yours', 'yourself', 'them', 'their', 'theirs']);
+const SMALL_WORDS = new Set(['a', 'an', 'the', 'and', 'but', 'or', 'nor', 'for', 'so', 'yet', 'of', 'in', 'on', 'at', 'to', 'by', 'with', 'from', 'as', 'into', 'is']);
 const ROMAN = new Set(['i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x']);
 
 export function sentenceCase(input) {
   const tokens = (input || '').trim().match(/([A-Za-z0-9]+(?:['’][A-Za-z0-9]+)*|[^A-Za-z0-9]+)/g) || [];
   const words = tokens.map((t, i) => (/^[A-Za-z0-9]/.test(t) ? i : -1)).filter(i => i >= 0);
+  // Written in sentence case already: lowercase words that aren't small ones
+  const asWritten = words.some((i, w) => w > 0 && /^[a-z]/.test(tokens[i]) && !SMALL_WORDS.has(tokens[i]));
   let out = '';
   let sentenceStart = true;
   tokens.forEach((t, i) => {
@@ -199,7 +204,8 @@ export function sentenceCase(input) {
     const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
     if (lower === 'holy' && (next === 'spirit' || next === 'ghost')) out += 'Holy';
     else if ((lower === 'spirit' || lower === 'ghost') && prev === 'holy') out += cap(lower);
-    else if (DIVINE.has(lower) || REVERENT_PRONOUNS.has(lower)) out += cap(lower);
+    else if (DIVINE.has(lower)) out += cap(lower);
+    else if (REVERENT_PRONOUNS.has(lower) && asWritten && /^[A-Z]/.test(t)) out += cap(lower);
     else if (ROMAN.has(lower)) out += lower.toUpperCase();
     else out += sentenceStart ? cap(lower) : lower;
     sentenceStart = false;

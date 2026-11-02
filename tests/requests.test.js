@@ -60,6 +60,14 @@ test('sentence case keeps capitals on names for God', () => {
   assert.equal(sentenceCase('Trusting god in chapter ii'), 'Trusting God in chapter II');
 });
 
+test('sentence case keeps a pronoun’s case as the request writes it', () => {
+  assert.equal(sentenceCase('God is with you in the waiting'), 'God is with you in the waiting');
+  assert.equal(sentenceCase('Trust Him with your waiting'), 'Trust Him with your waiting');
+  // All caps or Title Case can't say who "you" is
+  assert.equal(sentenceCase('GOD IS WITH YOU'), 'God is with you');
+  assert.equal(sentenceCase('Waiting On Him'), 'Waiting on him');
+});
+
 test('a book and chapter with no verses asks for the whole chapter', () => {
   const p = parseRequestFile('Slide 1: 1 Corinthians 13\nSlide 2: Psalm 23 (NIV 84)\nSlide 3: Top 10 reasons');
   assert.deepEqual([p.entries[0].type, p.entries[0].book, p.entries[0].chapter, p.entries[0].wholeChapter], ['scripture', '1 Corinthians', 13, true]);

@@ -25,6 +25,15 @@ test('fills a block to the line limit, ending on part of a verse', () => {
   assert.equal(fillBlock(chapter, 5, 1, { ...opts, maxLines: 6 }).partial, null);
 });
 
+test('fills the room left on the last line after the last whole verse', () => {
+  // Three short verses take two lines, and the second line has room for more
+  const short = [{ verse: 1, text: 'One line of verse one here.' }, { verse: 2, text: 'Verse two.' }, { verse: 3, text: 'Verse three runs on for quite a few more words than fit.' }];
+  const b = fillBlock(short, 1, 1, { ...opts, maxLines: 2 });
+  assert.deepEqual(b.whole, [1, 2]);
+  assert.ok(b.partial, 'the start of verse 3 finishes line 2');
+  assert.equal(b.lines, 2);
+});
+
 test('keeps the block in place while the highlight moves down it', () => {
   const slides = layoutPassage(chapter, [9, 10, 11, 12], opts);
   assert.equal(slides.length, 4);
