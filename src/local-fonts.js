@@ -1,8 +1,9 @@
 /**
- * Licensed fonts loaded on this machine, the same way Sunday Slides loads the
- * NIV 84: Neue Haas Grotesk Display Pro is commercial, so it never ships with
- * the site. Each browser loads the font file once from Settings and keeps it
- * in IndexedDB; after that the preview uses the real font.
+ * Licensed fonts. Neue Haas Grotesk Display Pro is commercial, so it never
+ * ships with the site. A copy installed with Font Book comes first; a font
+ * file loaded in Settings is the backup for a computer that doesn't have it
+ * installed. Each browser loads that file once and keeps it in IndexedDB, the
+ * same way Sunday Slides keeps its translation files.
  */
 
 const DB_NAME = 'porch-slides';
@@ -71,30 +72,41 @@ export function checkFontFile(buffer, wanted) {
   return wanted.some(w => all.includes(w)) ? '' : `That font is ${names.fullName || names.family || 'something else'}, not ${wanted[0]}.`;
 }
 
+/** True if the computer has the font installed under one of these names. */
+export async function isInstalled(names) {
+  const src = names.map(n => `local('${n.replace(/'/g, '')}')`).join(', ');
+  try {
+    await new FontFace('porch-installed-probe', src).load();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** Add a stored font to the page under the family name the themes use. */
-async function useFont(record) {
+export async function useFont(record) {
   const face = new FontFace(record.family, record.data, { weight: String(record.weight), style: 'normal' });
   await face.load();
   document.fonts.add(face);
 }
 
-/** Load every stored font into the page. Returns [{ family, name }]. */
+/**
+ * Read the stored fonts without using them yet: the caller adds them only for
+ * fonts that aren't installed. Returns [{ family, weight, name, data }].
+ */
 export async function restoreLocalFonts() {
   try {
-    const all = (await withStore('readonly', store => store.getAll())) || [];
-    for (const record of all) await useFont(record);
-    return all.map(r => ({ family: r.family, name: r.name }));
+    return (await withStore('readonly', store => store.getAll())) || [];
   } catch (err) {
     console.warn('Couldn’t read stored fonts:', err);
     return [];
   }
 }
 
-/** Keep a font file on this machine and start using it. */
-export async function saveLocalFont({ family, weight, name, data }) {
-  const record = { family, weight, name, data };
-  await useFont(record);
-  await withStore('readwrite', store => store.put(record, `${family}|${weight}`));
+/** Keep a font file on this machine. The caller uses it only if the font isn't installed. */
+export async function saveLocalFont(record) {
+  const { family, weight, name, data } = record;
+  await withStore('readwrite', store => store.put({ family, weight, name, data }, `${family}|${weight}`));
 }
 
 /** Forget a stored font (it stays in use until the page reloads). */

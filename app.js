@@ -16,12 +16,13 @@ import {
   compressDeckPayload, decompressDeckPayload, decompressOutlinePayload, encodeOutlineLink,
 } from './src/links.js';
 import { THEMES } from './src/themes/index.js';
-import { restoreLocalFonts, saveLocalFont, removeLocalFont, checkFontFile } from './src/local-fonts.js';
+import { restoreLocalFonts, saveLocalFont, removeLocalFont, checkFontFile, isInstalled, useFont } from './src/local-fonts.js';
 import sampleRequests from './reference/sample-requests.txt?raw';
 
 // ---------- State ----------
 const state = {
   theme: null, // theme config
+  font: { source: null, stored: null }, // Neue Haas: where it came from ('installed', 'browser', 'project', 'missing') and the stored file
   layouts: null, // resolved layouts
   size: { w: 3840, h: 2160 },
   header: {},
@@ -124,10 +125,16 @@ async function loadTheme(config) {
   await document.fonts.ready;
   const hasFont = f => [...document.fonts].some(face => face.family.replace(/["']/g, '') === f.family && String(face.weight) === String(f.weight) && face.status === 'loaded');
   const missing = [...new Set(Object.values(config.fonts).filter(f => !hasFont(f)).map(f => f.family))];
+  // Not installed and no stored file: on a development Mac, src/fonts/local/ may still supply it
+  if (state.font.source !== 'installed' && state.font.source !== 'browser') {
+    state.font.source = missing.includes(LOCAL_FONT.family) ? 'missing' : 'project';
+  }
+  renderFontFile();
   $('font-note').hidden = !missing.length;
-  $('font-note').textContent = missing.length
-    ? `${missing.join(', ')} isn’t on this computer, so the preview uses a stand-in font and line breaks may differ. Load the font file in Settings. The ProPresenter bundle still uses the theme’s fonts.`
+  $('font-note-text').textContent = missing.length
+    ? `${missing.join(' and ')} ${missing.length === 1 ? 'isn’t' : 'aren’t'} installed on this computer, so the preview uses a stand-in font and line breaks may differ. The ProPresenter bundle still uses the theme’s fonts.`
     : '';
+  $('btn-font-note-load').hidden = !missing.includes(LOCAL_FONT.family);
   $('theme-select').value = config.id;
   // Black-text themes need a light preview behind them, and the reverse
   if (config.dark && (state.bg === 'video' || state.bg === 'black')) setBg('light');
@@ -187,14 +194,45 @@ function relayoutAll() {
   });
 }
 
-// ---------- Neue Haas Grotesk font file (Settings) ----------
-// The commercial font is loaded once per browser, like Sunday Slides' NIV 84.
-const LOCAL_FONT = { family: 'Neue Haas Grotesk Display Pro', weight: 400, names: ['NHaasGroteskDSPro-55Rg', 'Neue Haas Grotesk Display'] };
+// ---------- Neue Haas Grotesk font (Settings) ----------
+// The commercial font comes from Font Book first. A font file loaded here is
+// the backup for a computer that doesn't have it installed.
+const LOCAL_FONT = {
+  family: 'Neue Haas Grotesk Display Pro',
+  weight: 400,
+  installed: ['NHaasGroteskDSPro-55Rg', 'Neue Haas Grotesk Display Pro 55 Roman', 'NeueHaasGroteskDisplayPro-55Roman'],
+  names: ['NHaasGroteskDSPro-55Rg', 'Neue Haas Grotesk Display'],
+};
 
-function renderFontFile(stored) {
-  $('font-file-status').textContent = stored
-    ? `Loaded on this computer: ${stored.name}.`
-    : 'Not loaded in this browser. Load the font file here once (NHaasGroteskDSPro-55Rg).';
+/** Use the installed font if there is one, otherwise the copy stored in this browser. */
+async function setUpLicensedFont(stored) {
+  state.font = { source: null, stored };
+  if (await isInstalled(LOCAL_FONT.installed)) {
+    state.font.source = 'installed';
+    return;
+  }
+  if (!stored) return;
+  try {
+    await useFont(stored);
+    state.font.source = 'browser';
+  } catch (err) {
+    console.warn('Couldn’t use the stored font:', err);
+  }
+}
+
+const FONT_SOURCES = {
+  installed: 'installed on this computer',
+  browser: 'loaded in this browser',
+  project: 'from src/fonts/local (development only)',
+  missing: 'missing',
+};
+
+function renderFontFile() {
+  const { source, stored } = state.font;
+  let line = `${LOCAL_FONT.family}: ${FONT_SOURCES[source] || 'checking…'}`;
+  if (source === 'browser') line += ` (${stored.name})`;
+  else if (stored) line += `. A stored copy (${stored.name}) is kept as the backup`;
+  $('font-file-status').textContent = `${line}.`;
   $('btn-remove-font').hidden = !stored;
   $('btn-load-font').textContent = stored ? 'Replace font file' : 'Load font file';
 }
@@ -206,19 +244,25 @@ async function loadFontFile(file) {
     showToast(problem, 'warn', 6000);
     return;
   }
+  const stored = { family: LOCAL_FONT.family, weight: LOCAL_FONT.weight, name: file.name, data };
+  const installed = state.font.source === 'installed';
   try {
-    await saveLocalFont({ family: LOCAL_FONT.family, weight: LOCAL_FONT.weight, name: file.name, data });
+    // An installed font still comes first; the stored file is only the backup
+    if (!installed) await useFont(stored);
+    await saveLocalFont(stored);
   } catch (err) {
     console.error(err);
     showToast('That font file couldn’t be loaded.', 'warn');
     return;
   }
-  renderFontFile({ name: file.name });
+  state.font = { source: installed ? 'installed' : 'browser', stored };
   // Measure everything again with the real font
   await loadTheme(state.theme);
   relayoutAll();
   renderAll();
-  showToast('Neue Haas Grotesk is loaded on this computer.');
+  showToast(state.font.source === 'installed'
+    ? 'Font file stored as the backup. This computer’s installed copy is still used.'
+    : 'Neue Haas Grotesk is loaded in this browser.');
 }
 
 // ---------- Translation files (Settings) ----------
@@ -1296,6 +1340,7 @@ function bindEvents() {
     showToast(`${bible.name} removed from this computer.`);
   });
   $('btn-load-font').addEventListener('click', () => $('font-input').click());
+  $('btn-font-note-load').addEventListener('click', () => $('font-input').click());
   $('font-input').addEventListener('change', async e => {
     const file = e.target.files[0];
     e.target.value = '';
@@ -1304,8 +1349,10 @@ function bindEvents() {
   $('btn-remove-font').addEventListener('click', async () => {
     if (!confirm('Remove the Neue Haas Grotesk font from this browser?')) return;
     await removeLocalFont(LOCAL_FONT.family, LOCAL_FONT.weight);
-    renderFontFile(null);
-    showToast('Font removed from this browser. Reload the page to see the stand-in.');
+    const wasUsed = state.font.source === 'browser';
+    state.font.stored = null;
+    renderFontFile();
+    showToast(wasUsed ? 'Font removed from this browser. Reload the page to see the stand-in.' : 'Font removed from this browser.');
   });
   $('context-verses').addEventListener('change', e => {
     state.context = +e.target.value;
@@ -1338,10 +1385,10 @@ async function init() {
   renderLocationsStatus();
   $('theme-select').innerHTML = THEMES.map(t => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('');
   setBg(storageGet('bg', 'video'));
-  // The licensed font, if this browser has it, before anything is measured
+  // The licensed font before anything is measured: installed first, then the stored file
   const fonts = await restoreLocalFonts();
+  await setUpLicensedFont(fonts.find(f => f.family === LOCAL_FONT.family) || null);
   renderLocalBibles(await restoreLocalBibles());
-  renderFontFile(fonts.find(f => f.family === LOCAL_FONT.family) || null);
   await loadTheme(THEMES[0]);
   bindEvents();
   renderAll();

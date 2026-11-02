@@ -132,7 +132,12 @@ src/fonts/                      IBM Plex Mono and the UI fonts (Lato, Oswald); l
 
 - Slide text is plain text with a little markup: `\n` for a line break, `{…}` for dimmed words, `^12^` for a verse number.
 - Context verses are dimmed with true text opacity in the bundle (a fourth, alpha value in the RTF's expanded color table), the same way the Lover's template stores its own see-through sample text.
-- Fonts: IBM Plex Mono, Lato and Oswald are under the SIL Open Font License and are bundled. Neue Haas Grotesk Display Pro is a commercial font and isn't in this repository: the site uses a copy installed on the computer (matched by its PostScript name, `NHaasGroteskDSPro-55Rg`), or a copy you put in `src/fonts/local/` (gitignored) for local development. To use the real font in the published preview on a particular machine, load the font file once in **Settings → Neue Haas Grotesk font**, the same way translation files are loaded: the browser keeps it (IndexedDB) and the site never publishes it. Installing the file with Font Book works too. Activating it through Adobe Fonts doesn't, because Adobe Fonts hides its fonts from web browsers. Without either, the preview uses a stand-in font and says so in the left panel. Line counts and breaks may then differ a little, but the ProPresenter bundle still names the theme's fonts, so ProPresenter shows them correctly.
+- Fonts: IBM Plex Mono, Lato and Oswald are under the SIL Open Font License and are bundled. Neue Haas Grotesk Display Pro is a commercial font and isn't in this repository. The site looks for it in this order:
+  1. **Installed on the computer** (Font Book), matched by its PostScript name `NHaasGroteskDSPro-55Rg` or its full name. This is the normal way.
+  2. **A font file loaded in this browser**, from **Settings → Neue Haas Grotesk font**. It's the backup for a computer that doesn't have the font installed: load the file once and the browser keeps it (IndexedDB). It's used only when the installed font isn't found, and the site never publishes it.
+  3. On a development Mac, a copy in `src/fonts/local/` (gitignored).
+
+  When the font is in none of these places, the left panel says so, with a **Load font file** button right in the note. The preview then uses a stand-in font, so line counts and breaks may differ a little; the ProPresenter bundle still names the theme's fonts, so ProPresenter shows them correctly. Settings shows where the font came from (installed on this computer, loaded in this browser, or missing), and offers Remove only when a file is stored.
 - Real manuscripts and ProPresenter libraries stay out of this repository. Only the sample request file is committed.
 
 ## License

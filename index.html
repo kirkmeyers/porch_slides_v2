@@ -64,7 +64,10 @@
             <span>Theme</span>
             <select id="theme-select"></select>
           </label>
-          <p class="hint" id="font-note" hidden></p>
+          <div class="hint font-note" id="font-note" hidden>
+            <span id="font-note-text"></span>
+            <button class="btn" id="btn-font-note-load" hidden>Load font file</button>
+          </div>
           <label class="field">
             <span>Porch Live locations <small>third intro slide</small></span>
             <input type="text" id="live-locations" placeholder="Fort Worth, Midland" autocomplete="off" />
@@ -94,8 +97,9 @@
             <input type="file" id="bibles-input" accept=".json,application/json" multiple hidden />
           </div>
           <div class="field">
-            <span>Neue Haas Grotesk font</span>
+            <span>Neue Haas Grotesk font <small>backup for computers without it installed</small></span>
             <div class="verify-status" id="font-file-status"></div>
+            <p class="hint">Installed fonts (Font Book) are used first. Load the font file here only on a computer that doesn’t have it installed; this browser keeps it.</p>
             <div class="field-row">
               <button class="btn grow" id="btn-load-font">Load font file</button>
               <button class="btn" id="btn-remove-font" hidden>Remove</button>

@@ -9,7 +9,7 @@
 /* Slide fonts used by the Porch themes. Neue Haas Grotesk is commercial: it comes
    from a copy installed on the computer, matched by its full or PostScript name
    (NHaasGroteskDSPro-55Rg, as the ProPresenter themes name it), with an uncommitted
-   local copy as a fallback. Fonts activated through Adobe Fonts aren't visible to browsers. */
+   local copy as a fallback. A font file stored from Settings is added by app.js only when this finds nothing. */
 @font-face { font-family: 'Neue Haas Grotesk Display Pro'; font-weight: 400; font-style: normal; font-display: block; src: local('NHaasGroteskDSPro-55Rg'), local('Neue Haas Grotesk Display Pro 55 Roman'), local('NeueHaasGroteskDisplayPro-55Roman'), url('./src/fonts/local/NeueHaasGroteskDisplayPro-55Roman.otf') format('opentype'); }
 @font-face { font-family: 'IBM Plex Mono'; font-weight: 300; font-style: normal; font-display: block; src: url('./src/fonts/IBMPlexMono-Light.ttf') format('truetype'); }
 @font-face { font-family: 'IBM Plex Mono'; font-weight: 400; font-style: normal; font-display: block; src: url('./src/fonts/IBMPlexMono-Regular.ttf') format('truetype'); }
@@ -97,6 +97,8 @@ details.card[open] summary h2::before { transform: rotate(90deg); }
 details.card[open] summary { margin-bottom: 10px; }
 
 .hint { color: var(--muted); font-size: 12px; margin: 10px 0 0; }
+.font-note { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.font-note[hidden] { display: none; }
 
 .deck-info { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--card-border); }
 .deck-title { font-family: 'Oswald', sans-serif; font-size: 16px; }
