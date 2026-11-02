@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { parseRequestFile, parseVerseList, parseVerseLines, extractCommunicatorLastName, dateCode, sentenceCase } from '../src/requests.js';
+import { parseRequestFile, parseVerseList, parseVerseLines, extractCommunicatorLastName, dateCode, sentenceCase, pronounsToReview } from '../src/requests.js';
 
 const sample = readFileSync(new URL('../reference/sample-requests.txt', import.meta.url), 'utf8');
 
@@ -73,4 +73,10 @@ test('a book and chapter with no verses asks for the whole chapter', () => {
   assert.deepEqual([p.entries[0].type, p.entries[0].book, p.entries[0].chapter, p.entries[0].wholeChapter], ['scripture', '1 Corinthians', 13, true]);
   assert.equal(p.entries[1].translation, 'NIV 84');
   assert.equal(p.entries[2].type, 'point');
+});
+
+test('finds the pronouns an operator checks on a point', () => {
+  assert.deepEqual(pronounsToReview('God is with you in the waiting; trust Him with your fears, you'), ['you', 'Him', 'your']);
+  assert.deepEqual(pronounsToReview('The Holy Spirit leads us'), []);
+  assert.deepEqual(pronounsToReview('Yours, theirs and youth'), [], 'only whole words from the list');
 });

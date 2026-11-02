@@ -1,5 +1,5 @@
 import JSZip from 'jszip';
-import { parseRequestFile, parseVerseLines, extractCommunicatorLastName, dateCode, sentenceCase, THEME_ALIASES } from './src/requests.js';
+import { parseRequestFile, parseVerseLines, extractCommunicatorLastName, dateCode, sentenceCase, pronounsToReview, THEME_ALIASES } from './src/requests.js';
 import {
   buildSlides, passageSlides, slideBlock, layoutTextSlide, measureSlide, loadPassageText,
   layoutForKind, makeSlide, newId, KIND_LABELS, passageLabel, boxMeasure,
@@ -348,7 +348,8 @@ function renderLocationsStatus() {
 }
 
 // ---------- Loading requests ----------
-async function loadRequestText(text, sourceLabel) {
+/** Build slides from request text. `keepTheme` ignores the file's # theme (the sample uses the selected one). */
+async function loadRequestText(text, sourceLabel, { keepTheme = false } = {}) {
   const parsed = parseRequestFile(text);
   if (!parsed.entries.length) {
     showToast('No slide requests found in that file.', 'warn');
@@ -359,7 +360,7 @@ async function loadRequestText(text, sourceLabel) {
   const h = parsed.header;
   const themeId = h.theme && THEME_ALIASES[h.theme.toLowerCase().trim()];
   const theme = themeId && THEMES.find(t => t.id === themeId);
-  if (theme && theme !== state.theme) await loadTheme(theme);
+  if (theme && theme !== state.theme && !keepTheme) await loadTheme(theme);
   if (h.communicator) $('communicator').value = h.communicator;
   $('service-date').value = /^\d{4}-\d{2}-\d{2}$/.test(h.date || '') ? h.date : todayIso();
   const loc = parseLocations(h.locations);
@@ -422,8 +423,26 @@ async function handleFile(file) {
 }
 
 // ---------- Warnings ----------
+/**
+ * Pronouns on a point to check by hand, in a theme whose points aren't all
+ * caps. Empty once the operator marks this text OK.
+ */
+function pronounReview(slide) {
+  if (slide.kind !== 'point' || state.layouts[slide.layout]?.text?.style?.caps) return [];
+  const text = plainText(slide.text);
+  return pronounsToReview(text);
+}
+
+function pronounsApproved(slide) {
+  return slide.pronounsOk === plainText(slide.text);
+}
+
 function slideIssues(slide) {
   const issues = slide.checks.map(c => (typeof c === 'string' ? { text: c } : c));
+  const pronouns = pronounReview(slide);
+  if (pronouns.length && !pronounsApproved(slide)) {
+    issues.push({ text: `Check the case of ${pronouns.map(p => `“${p}”`).join(', ')}: capitalized only when it means God.` });
+  }
   if (slide.needsText) issues.push({ danger: true, text: 'Verse text needed.' });
   if (slide.overflow) issues.push({ danger: true, text: `Text is too tall for the box (${slide.lines} lines); remove context or split the slide.` });
   return issues;
@@ -516,8 +535,20 @@ function renderGrid() {
         <span class="kind-tag ${slide.kind}">${KIND_LABELS[slide.kind]}</span>
         <span class="slide-ref">${escapeHtml(cardCaption(slide))}</span>
         ${slideBadges(slide)}
+        ${pronounReview(slide).length ? `<label class="pronoun-ok" title="The capitals on ${escapeHtml(pronounReview(slide).join(', '))} are right"><input type="checkbox"${pronounsApproved(slide) ? ' checked' : ''}> Pronouns OK</label>` : ''}
       </div>`;
     card.addEventListener('click', () => selectSlide(i));
+    const ok = card.querySelector('.pronoun-ok');
+    if (ok) {
+      ok.addEventListener('click', e => e.stopPropagation());
+      ok.querySelector('input').addEventListener('change', e => {
+        // Marks this text: an edit afterwards asks for the check again
+        slide.pronounsOk = e.target.checked ? plainText(slide.text) : null;
+        const scroll = grid.scrollTop;
+        renderAll();
+        grid.scrollTop = scroll;
+      });
+    }
     card.addEventListener('dblclick', () => openEditor(i));
     card.addEventListener('dragstart', e => {
       dragIndex = i;
@@ -1174,7 +1205,7 @@ function bindEvents() {
   });
   $('btn-load-sample').addEventListener('click', () => {
     if (state.slides.some(s => s.edited) && !confirm('Replace the current slides with the sample?')) return;
-    loadRequestText(sampleRequests, 'the sample');
+    loadRequestText(sampleRequests, 'the sample', { keepTheme: true });
   });
 
   // Drag and drop a request file anywhere

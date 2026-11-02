@@ -184,6 +184,21 @@ const REVERENT_PRONOUNS = new Set(['he', 'him', 'his', 'himself', 'you', 'your',
 const SMALL_WORDS = new Set(['a', 'an', 'the', 'and', 'but', 'or', 'nor', 'for', 'so', 'yet', 'of', 'in', 'on', 'at', 'to', 'by', 'with', 'from', 'as', 'into', 'is']);
 const ROMAN = new Set(['i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x']);
 
+/**
+ * The pronouns an operator checks on points in themes that aren't all caps,
+ * where the case shows: capitalized only when they mean God.
+ */
+const REVIEW_PRONOUNS = new Set(['you', 'your', 'he', 'him', 'them', 'their']);
+
+/** The review pronouns in a point's text, once each, as written. */
+export function pronounsToReview(text) {
+  const found = [];
+  for (const word of (text || '').match(/[A-Za-z]+/g) || []) {
+    if (REVIEW_PRONOUNS.has(word.toLowerCase()) && !found.some(f => f.toLowerCase() === word.toLowerCase())) found.push(word);
+  }
+  return found;
+}
+
 export function sentenceCase(input) {
   const tokens = (input || '').trim().match(/([A-Za-z0-9]+(?:['’][A-Za-z0-9]+)*|[^A-Za-z0-9]+)/g) || [];
   const words = tokens.map((t, i) => (/^[A-Za-z0-9]/.test(t) ? i : -1)).filter(i => i >= 0);

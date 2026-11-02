@@ -316,6 +316,8 @@ input[type='range'] { accent-color: var(--light-blue); }
 }
 .badge.danger { background: var(--danger-bg); color: var(--danger); }
 .badge.note { background: var(--info-bg); color: var(--accent); }
+.pronoun-ok { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; color: var(--muted); cursor: pointer; }
+.pronoun-ok input { margin: 0; accent-color: var(--accent); }
 
 /* ---------- Editor ---------- */
 .editor { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) 420px; overflow: hidden; }
