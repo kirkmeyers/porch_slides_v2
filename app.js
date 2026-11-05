@@ -2,7 +2,7 @@ import JSZip from 'jszip';
 import { parseRequestFile, parseVerseLines, extractCommunicatorLastName, dateCode, sentenceCase, pronounsToReview, THEME_ALIASES } from './src/requests.js';
 import {
   buildSlides, passageSlides, slideBlock, layoutTextSlide, measureSlide, loadPassageText,
-  layoutForKind, makeSlide, newId, KIND_LABELS, passageLabel, boxMeasure,
+  layoutForKind, makeSlide, newId, KIND_LABELS, passageLabel, boxMeasure, formatFor,
 } from './src/slides.js';
 import { parseTheme, resolveLayouts } from './src/theme.js';
 import { setFontMap, measure, fontMetrics, clearMetricsCache, drawSlide, renderSlidePng } from './src/render.js';
@@ -699,6 +699,8 @@ function renderEditor() {
       .join('');
     $('edit-translation').value = passage.translation;
   }
+  $('format-field').hidden = !passage || !passage.verses;
+  if (passage) $('edit-format').value = formatFor(passage);
   $('btn-relayout').disabled = !slide.layout || slide.kind === 'blank';
   $('btn-dim').disabled = !slide.layout || slide.kind === 'blank';
 
@@ -923,6 +925,23 @@ function changeContext(edge, delta) {
   state.slides[state.active] = next;
   renderAll();
   if (next.overflow) showToast(`That’s ${next.lines} lines, more than the box holds.`, 'warn');
+}
+
+/** Set a passage in prose, poetry or both (porch_slides' Format menu), and lay it out again. */
+function changeFormat(format) {
+  const slide = activeSlide();
+  const passage = state.passages[slide.group];
+  if (!passage || format === formatFor(passage)) return;
+  const [start, end] = groupRange(slide.group);
+  if (state.slides.slice(start, end + 1).some(s => s.edited) && !confirm('Changing the format lays this passage out again, replacing your edits. Continue?')) {
+    $('edit-format').value = formatFor(passage);
+    return;
+  }
+  passage.format = format;
+  const offset = state.active - start;
+  const r = rebuildPassage(slide.group);
+  state.active = r.start + Math.min(offset, r.count - 1);
+  renderAll();
 }
 
 /**
@@ -1308,6 +1327,7 @@ function bindEvents() {
   $('btn-dim').addEventListener('click', toggleDim);
   $('btn-relayout').addEventListener('click', autoLayout);
   $('edit-translation').addEventListener('change', e => changeTranslation(e.target.value));
+  $('edit-format').addEventListener('change', e => changeFormat(e.target.value));
   $('btn-ctx-up-less').addEventListener('click', () => changeContext('above', -1));
   $('btn-ctx-up-more').addEventListener('click', () => changeContext('above', 1));
   $('btn-ctx-down-less').addEventListener('click', () => changeContext('below', -1));

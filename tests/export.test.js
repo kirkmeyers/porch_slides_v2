@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { parseTheme, resolveLayouts } from '../src/theme.js';
 import { THEME_CONFIGS } from '../src/themes/configs.js';
 import { parseRequestFile } from '../src/requests.js';
-import { buildSlides } from '../src/slides.js';
+import { buildSlides, passageSlides } from '../src/slides.js';
 import { buildPresentation, fillRtf, withBlanks, slideNotes } from '../src/propresenter.js';
 import { decode, get, getAll, getMessage, asString, asDouble, asInt } from '../src/protobuf.js';
 
@@ -120,4 +120,18 @@ test('exports live text with the intro blanks, a closing blank and clean text at
     assert.equal(asInt(get(ranges[0], 2)), 1);
   }
   assert.equal(capsBoxes, 1, 'the reference');
+});
+
+test('the Format menu sets a passage in poetry or prose', async () => {
+  const { layouts, passages } = await deck('porch-generic');
+  const ctx = { layouts, measure, metricsFor, context: 2 };
+  const mark = passages.e0;
+  assert.equal(passageSlides(mark, ctx)[0].align, null, 'Mark is prose');
+  mark.format = 'poetry';
+  const poetry = passageSlides(mark, ctx);
+  assert.equal(poetry[0].align, 'left');
+  assert.ok(poetry[0].text.includes('\n'), 'verses start on their own lines');
+  const psalm = passages.e3;
+  psalm.format = 'prose';
+  assert.equal(passageSlides(psalm, ctx)[0].align, null, 'a psalm can be set as prose');
 });

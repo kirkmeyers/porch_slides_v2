@@ -115,7 +115,7 @@ export function passageSlides(passage, { layouts, measure, metricsFor, context =
   if (!passage.verses) {
     slides = passage.targets.map(needs);
   } else {
-    const format = passageFormat(passage.bookId, passage.chapter, passage.verses);
+    const format = formatFor(passage);
     const laid = layoutPassage(passage.verses, passage.targets, {
       ...box,
       format,
@@ -148,10 +148,15 @@ export function passageSlides(passage, { layouts, measure, metricsFor, context =
   return slides;
 }
 
+/** The operator's format for a passage (the editor's Format menu), or the one found from its book and verses. */
+export function formatFor(passage) {
+  return passage.format || passageFormat(passage.bookId, passage.chapter, passage.verses || []);
+}
+
 /** Rebuild one scripture slide's text between two verses (the editor's context buttons). */
 export function slideBlock(passage, slide, start, end, { layouts, measure, metricsFor }) {
   const box = boxMeasure(layouts.scripture, measure, metricsFor);
-  const format = passageFormat(passage.bookId, passage.chapter, passage.verses);
+  const format = formatFor(passage);
   const whole = passage.verses.filter(v => v.verse >= start && v.verse <= end);
   const text = blockText(whole, slide.ref.verse, null, { format, bookId: passage.bookId, chapter: passage.chapter });
   const lines = box.countLines(text);
