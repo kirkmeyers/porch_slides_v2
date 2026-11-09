@@ -87,10 +87,11 @@ Object.keys(BOOK_MAP).forEach(key => {
 });
 
 // Translations offered in the editor, as Bolls database codes -> how slides print them
-// (same list as porch_slides)
+// (porch_slides' list, plus the NKJV, MSG, NET and RSV from ProPresenter's Bibles)
 export const TRANSLATIONS = {
   ESV: 'ESV',
   KJV: 'KJV',
+  NKJV: 'NKJV',
   NIV2011: 'NIV',
   NIV: 'NIV 84',
   NASB: 'NASB',
@@ -98,6 +99,9 @@ export const TRANSLATIONS = {
   NLT: 'NLT',
   ASV: 'ASV',
   CSB17: 'CSB',
+  RSV: 'RSV',
+  NET: 'NET',
+  MSG: 'MSG',
 };
 
 // What request files and manuscripts write -> Bolls code
@@ -116,6 +120,12 @@ const TRANSLATION_ALIASES = {
   asv: 'ASV',
   csb: 'CSB17',
   csb17: 'CSB17',
+  nkjv: 'NKJV',
+  rsv: 'RSV',
+  net: 'NET',
+  msg: 'MSG',
+  message: 'MSG',
+  'the message': 'MSG',
 };
 
 /** "NIV" -> "NIV2011", "csb" -> "CSB17"; unknown names come back uppercased. */
